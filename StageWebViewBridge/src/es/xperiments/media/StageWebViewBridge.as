@@ -34,7 +34,7 @@ package es.xperiments.media
 
 		public var bridge:StageWebViewBridgeExternal;
 		
-		private static const ROOT_PATH:String = new File(new File( "app:/" ).nativePath).url;
+		public static const ROOT_PATH:String = new File(new File( "app:/" ).nativePath).url;
 	
 		private var _view:StageWebView;
 		private var _loadLocalURLFileStream:FileStream;
