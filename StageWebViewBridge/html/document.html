@@ -1,0 +1,44 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+   "http://www.w3.org/TR/html4/strict.dtd">
+
+<html lang="en">
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+	<title>untitled1</title>
+	<meta name="generator" content="TextMate http://macromates.com/">
+	<meta name="author" content="Pedro Casaubon">
+	<!-- Date: 2011-03-23 -->
+
+	<script type="text/javascript">
+		function changeColorJS( color )
+		{
+			document.body.style.background=color;
+		}
+		function getTextAreaValueJS()
+		{
+            return document.getElementById('textArea').value;
+		}
+		function changeColorAS( color )
+		{   
+			var bgcolorlist =new Array("0xDFDFFF", "0xFFFFBF", "0x80FF80", "0xEAEAFF", "0xC9FFA8", "0xF7F7F7","0xDDDD00");
+			var randomColor = bgcolorlist[Math.floor(Math.random()*bgcolorlist.length)];			
+			StageWebViewBridge.call('changeColorAS', null, randomColor );
+		}
+		function getTextAreaValueAS()
+		{
+			StageWebViewBridge.call('getTextAreaValueAS', function( textValue ){ alert( 'From AS3:'+textValue ) }, 'This text Comes from Javascript' ); 
+		} 
+
+	</script>
+</head>
+<body bgcolor="#FF0000">
+
+HTML<br><br>    
+<textarea id="textArea">TextArea value From Javascript</textarea><br>
+
+<button onclick="changeColorAS()">Change color in AS3</button><br>
+<button onclick="getTextAreaValueAS()">Get TextField Value from AS3</button><br>	 
+<img src="appfile:/html/yes.png">
+
+</body>
+</html>
