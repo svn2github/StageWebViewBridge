@@ -53,14 +53,12 @@ package
 			webView = new StageWebViewBridge();
 			webView.stage = this.stage;
 			webView.viewPort = new Rectangle(0, 200, stage.stageWidth, stage.stageHeight);
-			//webView.loadLocalURL("applink:/html/document.html");
-			webView.loadString('<html><head><script>function llamada(){ alert("llamada")}</script></head><body>AAAAAAAAAAAA</body></html>')
-			// create Elements
+			webView.loadLocalURL("applink:/html/document.html");
+
+			
 			changeColorJSButton = new PushButton(this, 10, 10, "Change HTML background color", onChangeColorJSButton);
 			getTextAreaValueJSButton = new PushButton(this, 10, 40, "Get HTML TextArea value", onGetTextAreaValueJSButton);
 
-			
-			
 			changeColorJSButton.width = 150;
 			getTextAreaValueJSButton.width = 150;			
 			textarea.width = 450;
@@ -80,11 +78,6 @@ package
 			changeBoxColor( '0xFF0000');
 			addJavascriptCallBacks();
 			
-			
-			
-			
-			
-		
 		}
 		private function addJavascriptCallBacks():void
 		{
@@ -107,12 +100,9 @@ package
 		
 		private function onChangeColorJSButton( e:Event ):void
 		{
-			/*
 			var bgcolorlist:Array=new Array("#DFDFFF", "#FFFFBF", "#80FF80", "#EAEAFF", "#C9FFA8", "#F7F7F7","#DDDD00");
 			var randomColor:String = bgcolorlist[Math.floor(Math.random()*bgcolorlist.length)];
 			webView.bridge.call('changeColorJS',null, randomColor);
-			*/
-				webView.bridge.call('llamada');
 		}
 	
 		private function onGetTextAreaValueJSButton( e:Event ):void
