@@ -136,8 +136,6 @@ package es.xperiments.media
 		 */		
 		private function onListener( e:Event ):void
 		{
-			if( e ) Example.instance.textarea.text = Example.instance.textarea.text +'\n'+e.toString();
-			trace( e ); 
 			switch( true )
 			{
 				case e.type == LocationChangeEvent.LOCATION_CHANGING:
