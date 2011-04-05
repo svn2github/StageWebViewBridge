@@ -28,34 +28,41 @@ package
 	import flash.events.MouseEvent;
 	import flash.geom.Rectangle;
 	import flash.media.StageWebView;
+	import flash.system.Capabilities;
 	import flash.text.TextField;
 	
+	
+	
 	[SWF(width="1024", height="768", frameRate="30", backgroundColor="#FFFFFF")]
-	public class Example extends Sprite
+	public class Example extends Sprite 
 	{
 		public var changeColorJSButton:PushButton;
 		public var getTextAreaValueJSButton:PushButton;
 		public var textarea:TextArea;
-		public var webView:StageWebViewBridge;		
+		public var webView:StageWebViewBridge;		 
 		public var boxColor:Sprite = new Sprite();
 		public static var instance:Example;
 		public function Example()
-		{
+		{ 
 			super();
+
 			instance = this;
 			addEventListener(Event.ADDED_TO_STAGE, initUI );
 		}
 		private function initUI( e:Event ):void
 		{
 			stage.align = StageAlign.TOP_LEFT;
-			stage.scaleMode = StageScaleMode.NO_SCALE;
+			stage.scaleMode = StageScaleMode.NO_SCALE; 
 			textarea = new TextArea( this, 10, 70 );
+			
+			StageWebViewBridge.DEBUGMODE=false;
+			StageWebViewBridge.setRootFolder('html');
+			
 			webView = new StageWebViewBridge();
 			webView.stage = this.stage;
-			webView.viewPort = new Rectangle(0, 200, stage.stageWidth, stage.stageHeight);
-			webView.loadLocalURL("applink:/html/document.html");
+			webView.viewPort = new Rectangle(0, 200, stage.stageWidth, 400);
+			webView.loadLocalURL("applink:/index.html");
 
-			
 			changeColorJSButton = new PushButton(this, 10, 10, "Change HTML background color", onChangeColorJSButton);
 			getTextAreaValueJSButton = new PushButton(this, 10, 40, "Get HTML TextArea value", onGetTextAreaValueJSButton);
 
@@ -63,7 +70,7 @@ package
 			getTextAreaValueJSButton.width = 150;			
 			textarea.width = 450;
 			textarea.height = 100;
-			textarea.text = " Text in as3 textarea";
+
 			
 			addChild( changeColorJSButton );
 			addChild( getTextAreaValueJSButton );
@@ -76,13 +83,17 @@ package
 			
 			addChild( boxColor );
 			changeBoxColor( '0xFF0000');
-			addJavascriptCallBacks();
+			//addJavascriptCallBacks();
+			
+			//textarea.text = Capabilities.os+'110101001'; 
+			
+			textarea.text = [ Capabilities.manufacturer,Capabilities.os,Capabilities.screenDPI, Capabilities.version ].join('\n');
 			
 		}
 		private function addJavascriptCallBacks():void
 		{
-			webView.bridge.addCallback("changeColorAS", changeBoxColor );
-			webView.bridge.addCallback("getTextAreaValueAS", getTextAreaValueAS );
+			//webView.bridge.addCallback("changeColorAS", changeBoxColor );
+			//webView.bridge.addCallback("getTextAreaValueAS", getTextAreaValueAS );
 		}
 		
 		private function getTextAreaValueAS( incomingText:String ):String
@@ -102,12 +113,13 @@ package
 		{
 			var bgcolorlist:Array=new Array("#DFDFFF", "#FFFFBF", "#80FF80", "#EAEAFF", "#C9FFA8", "#F7F7F7","#DDDD00");
 			var randomColor:String = bgcolorlist[Math.floor(Math.random()*bgcolorlist.length)];
-			webView.bridge.call('changeColorJS',null, randomColor);
+			//webView.bridge.call('changeColorJS',null, randomColor);
+			webView.loadURL("javascript:toto('pedro');");
 		}
 	
 		private function onGetTextAreaValueJSButton( e:Event ):void
 		{
-			webView.bridge.call('getTextAreaValueJS',onGetTextAreaValueJSDataReceived );
+			//webView.bridge.call('getTextAreaValueJS',onGetTextAreaValueJSDataReceived );
 		}		
 		private function onGetTextAreaValueJSDataReceived( value:String ):void
 		{
