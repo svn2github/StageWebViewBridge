@@ -17,6 +17,7 @@ limitations under the License.
 package es.xperiments.media
 {
 	import flash.display.BitmapData;
+	import flash.display.JointStyle;
 	import flash.display.Stage;
 	import flash.events.ErrorEvent;
 	import flash.events.Event;
@@ -32,13 +33,24 @@ package es.xperiments.media
 	public class StageWebViewBridge extends EventDispatcher
 	{
 
+		public static var DEBUGMODE:Boolean = true; 
 		public var bridge:StageWebViewBridgeExternal;
 		
-		public static const ROOT_PATH:String = new File(new File( "app:/" ).nativePath).url;
-	
+		private static const ROOT_PATH:String = new File(new File( "app:/" ).nativePath).url;
+		private static const DEFAULT_CACHED_EXTENSIONS:Array = ["html","htm","css","js"];
+		private static var CACHED_EXTENSIONS:Array;
+		private static var DOCUMENT_ROOT:String = "html";
+		private static var DOCUMENT_CACHE:String = DOCUMENT_ROOT+"Cache";
+		private static var DOCUMENT_SOURCE:String = DOCUMENT_ROOT+"Source";
+		private static var FIRST_RUN:Boolean = true;
+		
+		
 		private var _view:StageWebView;
-		private var _loadLocalURLFileStream:FileStream;
-	
+		private var _fileStream:FileStream; 
+		private var _tmpFile:File = new File();
+		private var _copyFromFile:File = new File();
+		private var _copyToFile:File = new File();
+		
 		// JAVASCRIPT CODE
 		private static const JSXML:XML =
 			<script>
@@ -118,19 +130,53 @@ package es.xperiments.media
 				]]>
 			</script>;
 		private static const JSCODE:String = JSXML.toString().replace( new RegExp( "\\n", "g" ), "" ).replace( new RegExp( "\\t", "g" ), "" );		
+		
+		// Static Class Initializer
+		{
+			setSourceFileExtensions( DEFAULT_CACHED_EXTENSIONS );
+			FIRST_RUN = File.applicationDirectory.resolvePath('firstRun.flag').exists ? false:true;
+		}		
+		
+		
 		public function StageWebViewBridge()
 		{
 			_view = new StageWebView();
+			_fileStream = new FileStream(); 
+			if( DEBUGMODE==true || FIRST_RUN ) processCache(); 
 			// this made the magic!! 
-			bridge = new StageWebViewBridgeExternal( this );         
+			 
+			bridge = new StageWebViewBridgeExternal( this );             
 			_view.addEventListener(Event.COMPLETE,onListener );  
 			_view.addEventListener(ErrorEvent.ERROR,onListener );
-			_view.addEventListener(FocusEvent.FOCUS_IN,onListener ); 
+			_view.addEventListener(FocusEvent.FOCUS_IN,onListener );  
 			_view.addEventListener(FocusEvent.FOCUS_OUT,onListener );
 			_view.addEventListener(LocationChangeEvent.LOCATION_CHANGE,onListener );
 			_view.addEventListener(LocationChangeEvent.LOCATION_CHANGING, onListener );
 		}
 
+		/**
+		 * Sets the document 
+		 * @param htmlRoot
+		 * @param htmlCacheRoot
+		 * 
+		 */		
+		public static function setRootFolder( htmlRoot:String="html"):void
+		{
+			DOCUMENT_ROOT = htmlRoot;
+			DOCUMENT_CACHE = DOCUMENT_ROOT+'Cache';
+			DOCUMENT_SOURCE = DOCUMENT_ROOT+'Source';
+		}	
+		
+		/**
+		 * Sets the file extensions that musy be preparsed into cache 
+		 * @param ext Array of extensions ex.:["html","htm","css","js"]
+		 * 
+		 */		
+		public static function setSourceFileExtensions( extensions:Array ):void 
+		{
+			CACHED_EXTENSIONS = extensions;
+		}
+		
 		/**
 		 * Generic StageWebView Listener. Controls LOCATION_CHANGING events for catching special cases.
 		 */		
@@ -166,13 +212,162 @@ package es.xperiments.media
 				break;	
 			}	
 
+		} 
+		/**
+		 * Processes the cache maintenance.
+		 * Update the cached files when the don't exist or has been updated.
+		 * Change DEBUGMODE to false for switch between DEBUG or PRODUCTION mode
+		 *  
+		 */		
+		public function processCache():void
+		{
+			var currentRootPath:String = DEBUGMODE ? DOCUMENT_ROOT:DOCUMENT_SOURCE;
+			var fileList:Vector.<File> = new Vector.<File>();
+			var cached_extensionsString:String = CACHED_EXTENSIONS.join(',');
+			var ext:String;
+			createCacheDir();
+			getFilesRecursive( fileList,'app:/'+currentRootPath); 
+
+			if( FIRST_RUN )
+			{ 
+				for(var e:uint = 0; e<fileList.length; e++)
+				{
+					ext = fileList[e].extension;
+					if( cached_extensionsString.indexOf( fileList[e].extension )!=-1 )
+					{
+						preparseFile( fileList[e] , ( ext == "html" || ext == "htm") );
+					}  
+				}
+				_tmpFile.nativePath = File.applicationDirectory.resolvePath('firstRun.flag').nativePath;
+				_fileStream.open(_tmpFile, FileMode.WRITE);
+				_fileStream.writeUTFBytes( 'firstRun=true' ); 
+				_fileStream.close();
+				FIRST_RUN = false;
+ 			}	   
+			   
+
+			for ( var i:uint = 0; i<fileList.length; i++)
+			{
+				ext = fileList[i].extension;
+				if( cached_extensionsString.indexOf( ext )!=-1 )
+				{
+					preparseFile( fileList[i] , ( ext == "html" || ext == "htm") );
+				}
+				else
+				{
+						_copyFromFile.nativePath = fileList[i].nativePath;
+						_copyToFile.nativePath = File.applicationDirectory.resolvePath( DOCUMENT_CACHE+'/'+fileList[i].url.split('app:/'+DOCUMENT_ROOT+'/')[1] ).nativePath;
+						if( _copyToFile.exists )
+						{
+							if( _copyFromFile.modificationDate.getTime() > _copyToFile.modificationDate.getTime() )
+							{
+								_copyFromFile.copyTo(_copyToFile,true );
+							}	
+						}  
+						else
+						{
+							_copyFromFile.copyTo(_copyToFile,true );						
+						}
+				} 	
+			}
+
+		} 
+		
+		private function createCacheDir():void
+		{
+			var cacheDir:String = File.applicationDirectory.resolvePath( DOCUMENT_CACHE ).nativePath;
+			_tmpFile.nativePath = cacheDir;
+			_tmpFile.createDirectory();			
+		} 
+		 
+		private function preparseFile( file:File, ishtml:Boolean = false ):void
+		{ 
+
+			var currentRootPath:String = DEBUGMODE ? DOCUMENT_ROOT:DOCUMENT_SOURCE;
+			var update:Boolean = false;
+			
+			_copyFromFile.nativePath = file.nativePath;
+			_copyToFile.nativePath = File.applicationDirectory.resolvePath( DOCUMENT_CACHE+'/'+file.url.split('app:/'+currentRootPath+'/')[1] ).nativePath; 
+
+			if( !_copyToFile.exists )
+			{
+				update = true;
+			}
+			else
+			{	
+				// is file newer?
+				if ( _copyFromFile.modificationDate.getTime() > _copyToFile.modificationDate.getTime() || FIRST_RUN )
+				{
+					update=true;
+				}
+			} 
+			
+			// First time we must do the fileupdate to correct plattform paths
+			if( FIRST_RUN ) update = true;
+			
+			if( !update ){ return; }
+			
+			// get original file contents
+			_fileStream.open(_copyFromFile, FileMode.READ);
+			var originalFileContents:String = _fileStream.readUTFBytes(_fileStream.bytesAvailable);
+			_fileStream.close();
+			
+			// parse file contents to change path values
+			var fileContents:String = originalFileContents.split('appfile:').join( ROOT_PATH+'/'+DOCUMENT_CACHE );
+			if( ishtml )   
+			{
+				fileContents = fileContents.split('<head>').join( '<head><script type="text/javascript">'+JSCODE+'</script>' );
+			}	 
+			
+			// write file to the cache dir 
+			_fileStream.open(_copyToFile, FileMode.WRITE );
+			_fileStream.writeUTFBytes( fileContents ); 
+			_fileStream.close();
+			
+			// on Debug mode copy the original file to the release source dir
+			if( DEBUGMODE )
+			{	
+				_copyToFile.nativePath = File.applicationDirectory.resolvePath( DOCUMENT_SOURCE+'/'+file.url.split('app:/'+DOCUMENT_ROOT+'/')[1] ).nativePath; 
+				_fileStream.open(_copyToFile, FileMode.WRITE );
+				_fileStream.writeUTFBytes( originalFileContents ); 
+				_fileStream.close();
+			}
+			
 		}
+		
+		
+		
+		/**
+		 * Recursively get a directory structure 
+		 * @param fileList Destination vector file
+		 * @param path Current path to process
+		 * 
+		 */		 
+		private function getFilesRecursive( fileList:Vector.<File>, path:String="" ):void
+		{
+			var currentFolder:File = new File( path );
+			var files:Array = currentFolder.getDirectoryListing();
+			for (var f:uint = 0; f < files.length; f++)
+			{
+				if (files[f].isDirectory)
+				{
+					if (files[f].name !="." && files[f].name !="..")
+					{ 
+						//dir
+						getFilesRecursive(fileList, files[f].url);
+					}
+				} 
+				else 
+				{ 
+					//file
+					fileList.push(files[f]);
+				}
+			}            
+		}	
+		
 		
 		/**
 		 * Loads a local htmlFile into the webview.
-		 * Loads this file from the aplication directory and preprocess it.
-		 * If a preprocesed version of the file don't exist, preprocess the
-		 * file and save a version to the aplicationStorageDirectory.
 		 * 
 		 * To link files in html use the "applink:/" protocol:
 		 * <a href="applink:/index.html">index</a>
@@ -186,43 +381,14 @@ package es.xperiments.media
 		 */		
 		public function loadLocalURL( url:String ):void
 		{
-			_loadLocalURLFileStream = new FileStream();			
-
 			var fileName:String = url.split('applink:/')[1];
-			var applicationDirectoryFile:File = new File(new File( "app:/"+fileName ).nativePath);
-			var userCacheFile:File = File.applicationStorageDirectory.resolvePath( 'htmlcache/'+fileName );
-			var updateCache:Boolean = false;  	
-			if(!userCacheFile.exists ) 
-			{	
-				updateCache = true; 
-			}
-			else
-			{
-				if ( applicationDirectoryFile.modificationDate.getTime() > userCacheFile.modificationDate.getTime() )
-				{
-					updateCache = true;
-				}
-				else
-				{
-					updateCache = false; 
-				}	
-			}
+			_tmpFile.nativePath = File.applicationDirectory.resolvePath( DOCUMENT_CACHE+'/'+fileName ).nativePath; 
+			 
+ 			_view.loadURL( _tmpFile.url ); 
 			
-			if( updateCache )
-			{
-				_loadLocalURLFileStream.open(applicationDirectoryFile, FileMode.READ);
-				var fileContents:String = _loadLocalURLFileStream.readUTFBytes(_loadLocalURLFileStream.bytesAvailable).split('appfile:').join( ROOT_PATH ).split('<head>').join( '<head><script type="text/javascript">'+JSCODE+'</script>' );
-				_loadLocalURLFileStream.close();
-				
-				_loadLocalURLFileStream.open(userCacheFile, FileMode.WRITE );
-				_loadLocalURLFileStream.writeUTFBytes( fileContents );
-				_loadLocalURLFileStream.close();			
-			}
-			_view.loadURL( new File( userCacheFile.nativePath ).url ); 
-			
-		}			
+		}			 
 		
-		
+		 
 		
 		// GETTERS SETTERS
 		
@@ -264,7 +430,7 @@ package es.xperiments.media
 		{
 			_view.assignFocus( direction );
 		}	
-		public function dispose():void
+		public function dispose():void 
 		{
 			_view.removeEventListener(Event.COMPLETE,onListener );
 			_view.removeEventListener(ErrorEvent.ERROR,onListener );
@@ -294,7 +460,8 @@ package es.xperiments.media
 		 */		
 		public function loadString(text:String, mimeType:String = "text/html"):void
 		{
-			text = text.split('appfile:').join( ROOT_PATH ).split('<head>').join( '<head><script type="text/javascript">'+JSCODE+'</script>' );
+			text=text.replace(new RegExp('appfile:','g'), ROOT_PATH );
+			text=text.replace(new RegExp('<head>','g'), '<head><script type="text/javascript">'+JSCODE+'</script>' );
 			_view.loadString( text, mimeType );
 		}
 		public function loadURL(url:String):void
@@ -309,9 +476,5 @@ package es.xperiments.media
 		{
 			_view.stop( );
 		}	
-		
-
-		
-		
 	}
 }
