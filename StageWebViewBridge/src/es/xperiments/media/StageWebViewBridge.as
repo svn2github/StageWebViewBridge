@@ -15,6 +15,9 @@ limitations under the License.
  */
 package es.xperiments.media
 {
+	import flash.display.Stage;
+	import flash.display.DisplayObjectContainer;
+	import flash.display.DisplayObject;
 	import flash.display.Bitmap;
 	import flash.display.BitmapData;
 	import flash.events.ErrorEvent;
@@ -37,6 +40,7 @@ package es.xperiments.media
 		private var _tmpFile : File = new File();
 		private var _snapShotVisible : Boolean = false;
 		private var _getSnapShotCallBack : Function;
+		private var _autoVisibleUpdate : Boolean;
 
 		/**
 		 * @param xpos Indicates the initial x pos
@@ -48,12 +52,23 @@ package es.xperiments.media
 		 *  var testBridge:StageWebViewBridge = new StageWebViewBridge( );
 		 * 
 		 */
-		public function StageWebViewBridge( xpos : uint = 0, ypos : uint = 0, w : uint = 400, h : uint = 400 )
+		public function StageWebViewBridge( xpos : uint = 0, ypos : uint = 0, w : uint = 400, h : uint = 400, autoVisibleUpdate:Boolean = false )
 		{
+			_autoVisibleUpdate = autoVisibleUpdate;
 			_viewPort = new Rectangle( 0, 0, w, h );
 			_view = new StageWebView();
 			_view.viewPort = _viewPort;
 
+			/** 
+			 * Workarround to iOS Bug that crashes
+			 * the app when a load method starts and the 
+			 * view.stage is not declared
+			 */
+			if ( StageWebViewDisk.isIPHONE )
+			{
+				_view.stage = StageWebViewDisk.stage;
+				_view.stage = null;
+			}
 			_bridge = new StageWebViewBridgeExternal( this );
 
 			// adds callback to get Root Ptah from JS
@@ -85,6 +100,28 @@ package es.xperiments.media
 			_viewPort.x = _translatedPoint.x;
 			_viewPort.y = _translatedPoint.y;
 			viewPort = _viewPort;
+			
+			if( _autoVisibleUpdate )
+			{
+				addEventListener(Event.ENTER_FRAME, checkVisibleState );
+				addEventListener( Event.REMOVED_FROM_STAGE, onRemoved );
+			}
+			else
+			{
+				removeEventListener( Event.ADDED_TO_STAGE, onAdded );			
+			}
+		}
+
+		private function onRemoved( event : Event ) : void
+		{
+			_view.stage = null;
+			removeEventListener(Event.ENTER_FRAME, checkVisibleState );
+			removeEventListener( Event.REMOVED_FROM_STAGE, onRemoved );			
+		}
+
+		private function checkVisibleState( event : Event ) : void
+		{
+			visible = isVisible( this );
 		}
 
 		/**
@@ -248,7 +285,7 @@ package es.xperiments.media
 		 */
 		public function loadString( text : String, mimeType : String = "text/html" ) : void
 		{
-//			text = text.replace( new RegExp( 'appfile:', 'g' ), StageWebViewDisk.applicationCacheDirectory );
+			// text = text.replace( new RegExp( 'appfile:', 'g' ), StageWebViewDisk.applicationCacheDirectory );
 			text = text.replace( new RegExp( '<head>', 'g' ), '<head><script type="text/javascript">' + StageWebViewDisk.JSCODE + '</script>' );
 			_view.loadString( text, mimeType );
 		}
@@ -376,6 +413,24 @@ package es.xperiments.media
 		public function addCallback( name : String, callback : Function ) : void
 		{
 			_bridge.addCallback( name, callback );
+		}
+
+		/**
+		 * Recursively getting parents visivility
+		 * @param t the displayobject to test
+		 */
+		private static function isVisible( t : DisplayObject ) : Boolean
+		{
+			if (t.stage == null)
+				return false;
+			var p : DisplayObjectContainer = t.parent;
+			while (!(p is Stage))
+			{
+				if (!p.visible)
+					return false;
+				p = p.parent;
+			}
+			return true;
 		}
 	}
 }
