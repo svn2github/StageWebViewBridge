@@ -1,5 +1,6 @@
 package es.xperiments.media
 {
+	import flash.display.Stage;
 	import flash.events.Event;
 
 	import flash.events.EventDispatcher;
@@ -135,11 +136,14 @@ package es.xperiments.media
 		public static var JSCODE : String  =
 			JSXML.toString()
 			.replace( new RegExp( "\\n", "g" ), "" )
-			.replace( new RegExp( "\\t", "g" ), "" );
+		.replace( new RegExp( "\\t", "g" ), "" );
+		private static var _stage : Stage;
 
 
 		/**
 		 * Main init function
+		 * 
+		 * @param stage instance
 		 * 
 		 * @example
 		 *	<br>
@@ -148,11 +152,12 @@ package es.xperiments.media
 		 *	// Initialize your aditionl extensions to preparse BEFORE!!!<br> 
 		 *	StageWebViewDisk.setSourceFileExtensions([ "html", "htm", "css", "js", "xml" ]);<br><br> 
 		 *	// Call init function<br>
-		 *	StageWebViewDisk.initialize()<br>
+		 *	StageWebViewDisk.initialize( stage )<br>
 		 * 
 		 */
-		public static function initialize() : void
+		public static function initialize( stage:Stage ) : void
 		{
+			_stage = stage;
 			setExtensionsToProcess( _cached_extensions );
 			switch( true )
 			{
@@ -415,6 +420,11 @@ package es.xperiments.media
 					if ( !currFile.isHidden ) fileList.push( currFile );
 				}
 			}
+		}
+
+		static public function get stage() : Stage
+		{
+			return _stage;
 		}
 	}
 }
