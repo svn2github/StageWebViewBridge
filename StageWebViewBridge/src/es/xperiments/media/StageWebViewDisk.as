@@ -20,9 +20,9 @@ package es.xperiments.media
 		public static const isMAC : Boolean = Capabilities.version.indexOf( 'MAC' ) != -1 ? true : false;
 		public static const isWINDOWS : Boolean = Capabilities.version.indexOf( 'WIN' ) != -1 ? true : false;
 		public static const isDESKTOP : Boolean = ( isLINUX || isMAC || isWINDOWS );
-		public static var applicationCacheDirectory : String;
-		public static var applicationRootPath : String;
-		
+
+		private static var _applicationCacheDirectory : String;
+		private static var _applicationRootPath : String;
 		private static var _debugMode : Boolean = false;
 		private static var appCacheFile : File ;
 		private static var _cached_extensions : Array = [ "html", "htm", "css", "js" ];
@@ -34,7 +34,7 @@ package es.xperiments.media
 		private static var _copyFromFile : File = new File();
 		private static var _copyToFile : File = new File();
 		private static var _tempFileCounter : uint = 0;
-		protected static var disp : EventDispatcher;
+		private static var disp : EventDispatcher;
 		
 		// This is the javascript code that do the javascript bridge part
 		private static const JSXML : XML = <script>
@@ -159,25 +159,25 @@ package es.xperiments.media
 				// ANDROID
 				case isANDROID:
 					appCacheFile = File.applicationStorageDirectory;
-					applicationCacheDirectory = new File( appCacheFile.nativePath ).url;
+					_applicationCacheDirectory = new File( appCacheFile.nativePath ).url;
 					
 					break;
 				// IOS
 				case isIPHONE :
 					appCacheFile = new File( new File( "app:/" ).nativePath );
-					applicationCacheDirectory = appCacheFile.url;
+					_applicationCacheDirectory = appCacheFile.url;
 					break;
 				// DESKTOP OSX
 				case isDESKTOP:
 					appCacheFile = new File( new File( "app:/" ).nativePath );
-					applicationCacheDirectory = appCacheFile.url;
+					_applicationCacheDirectory = appCacheFile.url;
 					break;
 			}
 			
-			applicationRootPath = applicationCacheDirectory + '/' + StageWebViewDisk.getWorkingDir(); 
+			_applicationRootPath = _applicationCacheDirectory + '/' + getWorkingDir(); 
 
 			// Determine if is ther first time that the application runs
-			_firstRun = new File( applicationCacheDirectory ).resolvePath( '.swvbinit' ).exists ? false : true;
+			_firstRun = new File( _applicationCacheDirectory ).resolvePath( '.swvbinit' ).exists ? false : true;
 
 			// If first run or in DebugMode run the "diskCaching"
 			if ( _firstRun || _debugMode )
@@ -190,7 +190,7 @@ package es.xperiments.media
 		}
 
 		/**
-		 * Enables / Disabled DEBUG MODE
+		 * Enables / Disables DEBUG MODE
 		 */
 		public static function setDebugMode( mode : Boolean = true ) : void
 		{
@@ -199,7 +199,7 @@ package es.xperiments.media
 
 		/**
 		 * Sets the file extensions that must be preparsed into cache 
-		 * @param ext Array of extensions ex.:["html","htm","css","js"]
+		 * @param extensions Array of extensions ex.:["html","htm","css","js"]
 		 * 
 		 */
 		public static function setExtensionsToProcess( extensions : Array ) : void
@@ -212,9 +212,9 @@ package es.xperiments.media
 		 * @param contents Contents of the file.
 		 * @param extension Extension of the file ( default = "html" ).
 		 */
-		public static function createTempFile( contents : String, extension : String = "html" ) : File
+		internal static function createTempFile( contents : String, extension : String = "html" ) : File
 		{
-			contents = contents.replace( new RegExp( 'appfile:', 'g' ), applicationRootPath );
+			contents = contents.replace( new RegExp( 'appfile:', 'g' ), _applicationRootPath );
 			contents = contents.replace( new RegExp( '<head>', 'g' ), '<head><script type="text/javascript">' + JSCODE + '</script>' );
 			_fileStream = new FileStream();
 			_tmpFile = appCacheFile.resolvePath( 'SWVBTmp/' + ( _tempFileCounter++) + '.' + extension );
@@ -232,7 +232,7 @@ package es.xperiments.media
 		 */
 		public static function createFile( fileName : String, contents : String, isHtml : Boolean = true ) : File
 		{
-			contents = contents.replace( new RegExp( 'appfile:', 'g' ), applicationRootPath );
+			contents = contents.replace( new RegExp( 'appfile:', 'g' ), _applicationRootPath );
 			if ( isHtml ) contents = contents.replace( new RegExp( '<head>', 'g' ), '<head><script type="text/javascript">' + JSCODE + '</script>' );
 			_fileStream = new FileStream();
 			_tmpFile = appCacheFile.resolvePath( getWorkingDir() + fileName.split( 'appfile:' )[1] );
@@ -256,7 +256,7 @@ package es.xperiments.media
 		 */
 		public static function getRootPath( ) : String
 		{
-			return applicationRootPath;
+			return _applicationRootPath;
 		}
 
 		/* STATIC EVENT DISPATCHER */
@@ -350,7 +350,7 @@ package es.xperiments.media
 					}
 				}
 			}
-			var firstRunFile : File = new File( applicationCacheDirectory ).resolvePath( '.swvbinit' );
+			var firstRunFile : File = new File( _applicationCacheDirectory ).resolvePath( '.swvbinit' );
 			_fileStream.open( firstRunFile, FileMode.WRITE );
 			_fileStream.writeUTF( "init" );
 			_fileStream.close();
@@ -379,7 +379,7 @@ package es.xperiments.media
 			_fileStream.close();
 
 			// parse file contents to change path values
-			var fileContents : String = originalFileContents.split( 'appfile:' ).join( applicationRootPath );
+			var fileContents : String = originalFileContents.split( 'appfile:' ).join( _applicationRootPath );
 			fileContents = fileContents.split( '<head>' ).join( '<head><script type="text/javascript">' + JSCODE + '</script>' );
 
 			// write file to the cache dir

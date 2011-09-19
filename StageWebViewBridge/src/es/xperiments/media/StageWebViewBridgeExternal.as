@@ -39,7 +39,7 @@ package es.xperiments.media
 		/**
 		 * Initializes javascript comunication, passing the applicationRootPath
 		 */
-		public function initJavascriptCommunication( ):void
+		internal function initJavascriptCommunication( ):void
 		{
 			_activeStage.loadURL("javascript:");
 		}
@@ -50,7 +50,7 @@ package es.xperiments.media
 		 * @param callback The callback function to execute when javascript call is processed
 		 * @param arguments Coma separated arguments to pass to Javascript function
 		 */
-		public function call(functionName:String, callback:Function = null,  ... arguments):void
+		internal function call(functionName:String, callback:Function = null,  ... arguments):void
 		{
 			_serializeObject = {};  
 			_serializeObject['method'] = functionName;
@@ -68,7 +68,7 @@ package es.xperiments.media
 		 * @param name the name of the callback function in this format : [SWVMethod]( name )
 		 * @param callback The callback function 
 		 */
-		public function addCallback( name:String, callback:Function ):void
+		internal function addCallback( name:String, callback:Function ):void
 		{
 			_callBacks[ name ] = callback;
 		}	
@@ -79,7 +79,7 @@ package es.xperiments.media
 		 * @param base64String Json Object in base64
 		 */
 
-		public function parseCallBack( base64String:String ):void
+		internal function parseCallBack( base64String:String ):void
 		{
 			_serializeObject = JSON.decode( Base64.decode( base64String ).toString() );
 			_callBackFunction = _callBacks[ _serializeObject['method'] ];

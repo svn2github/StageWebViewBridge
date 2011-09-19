@@ -248,7 +248,7 @@ package es.xperiments.media
 		 */
 		public function loadString( text : String, mimeType : String = "text/html" ) : void
 		{
-			text = text.replace( new RegExp( 'appfile:', 'g' ), StageWebViewDisk.applicationCacheDirectory );
+//			text = text.replace( new RegExp( 'appfile:', 'g' ), StageWebViewDisk.applicationCacheDirectory );
 			text = text.replace( new RegExp( '<head>', 'g' ), '<head><script type="text/javascript">' + StageWebViewDisk.JSCODE + '</script>' );
 			_view.loadString( text, mimeType );
 		}
@@ -357,11 +357,22 @@ package es.xperiments.media
 			bitmapData = new BitmapData( _viewPort.width, _viewPort.height, false, 0x000000 );
 		}
 
+		/**
+		 * Makes a call to a javascript function
+		 * @param functionName Name of the function to call
+		 * @param callback The callback function to execute when javascript call is processed
+		 * @param arguments Coma separated arguments to pass to Javascript function
+		 */
 		public function call( functionName : String, callback : Function = null, ... arguments ) : void
 		{
 			_bridge.call.apply( null, [ functionName, callback ].concat( arguments ) );
 		}
 
+		/**
+		 * Add a callback function to the current list of avaliable callbacks
+		 * @param name the name of the callback function in this format : [SWVMethod]( name )
+		 * @param callback The callback function 
+		 */
 		public function addCallback( name : String, callback : Function ) : void
 		{
 			_bridge.addCallback( name, callback );
