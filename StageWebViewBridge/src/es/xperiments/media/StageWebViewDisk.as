@@ -157,6 +157,10 @@ package es.xperiments.media
 		 */
 		public static function initialize( stage:Stage ) : void
 		{
+			if( stage == null ) 
+			{
+				throw new Error("StageWebViewDisk.initialize( stage ) :: You mus provide a valid stage instance");
+			}
 			_stage = stage;
 			setExtensionsToProcess( _cached_extensions );
 			switch( true )
