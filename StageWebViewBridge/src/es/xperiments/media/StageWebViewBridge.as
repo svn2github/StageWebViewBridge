@@ -47,12 +47,12 @@ package es.xperiments.media
 		 * @param ypos Indicates the initial y pos
 		 * @param w Indicates the initial width
 		 * @param h Indicates the initial height
-		 * 
+		 * @param autoVisibleUpdate Boolean. Control visibility testing of his parents. TRUE by Default. Disable it to save some CPU ( as it uses an EXIT_FRAME event listener to work ),then control yourself his visibility. 
 		 * @example
 		 *  var testBridge:StageWebViewBridge = new StageWebViewBridge( );
 		 * 
 		 */
-		public function StageWebViewBridge( xpos : uint = 0, ypos : uint = 0, w : uint = 400, h : uint = 400, autoVisibleUpdate:Boolean = false )
+		public function StageWebViewBridge( xpos : uint = 0, ypos : uint = 0, w : uint = 400, h : uint = 400, autoVisibleUpdate:Boolean = true )
 		{
 			_autoVisibleUpdate = autoVisibleUpdate;
 			_viewPort = new Rectangle( 0, 0, w, h );
