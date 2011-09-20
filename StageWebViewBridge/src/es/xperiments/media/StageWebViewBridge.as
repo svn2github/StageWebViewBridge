@@ -103,7 +103,7 @@ package es.xperiments.media
 			
 			if( _autoVisibleUpdate )
 			{
-				addEventListener(Event.ENTER_FRAME, checkVisibleState );
+				addEventListener(Event.EXIT_FRAME, checkVisibleState );
 				addEventListener( Event.REMOVED_FROM_STAGE, onRemoved );
 			}
 			else
@@ -115,7 +115,7 @@ package es.xperiments.media
 		private function onRemoved( event : Event ) : void
 		{
 			_view.stage = null;
-			removeEventListener(Event.ENTER_FRAME, checkVisibleState );
+			removeEventListener(Event.EXIT_FRAME, checkVisibleState );
 			removeEventListener( Event.REMOVED_FROM_STAGE, onRemoved );			
 		}
 
