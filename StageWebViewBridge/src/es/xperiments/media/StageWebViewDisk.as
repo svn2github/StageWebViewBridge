@@ -193,6 +193,10 @@ package es.xperiments.media
 			{
 				processCache();
 			}
+			else
+			{
+				dispatchEvent( new StageWebviewDiskEvent( StageWebviewDiskEvent.END_DISK_PARSING ) );
+			}
 
 			// delete our temp directory at start
 			deleteTempFolder();
