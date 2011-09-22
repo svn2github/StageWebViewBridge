@@ -15,11 +15,11 @@ limitations under the License.
  */
 package es.xperiments.media
 {
-	import flash.display.Stage;
-	import flash.display.DisplayObjectContainer;
-	import flash.display.DisplayObject;
 	import flash.display.Bitmap;
 	import flash.display.BitmapData;
+	import flash.display.DisplayObject;
+	import flash.display.DisplayObjectContainer;
+	import flash.display.Stage;
 	import flash.events.ErrorEvent;
 	import flash.events.Event;
 	import flash.events.FocusEvent;
@@ -112,6 +112,10 @@ package es.xperiments.media
 			}
 		}
 
+		/**
+		 * Fires when the bitmap is removed from stage
+		 * Used to remove the autoVisibleUpdate feature  
+		 */
 		private function onRemoved( event : Event ) : void
 		{
 			_view.stage = null;
@@ -119,6 +123,9 @@ package es.xperiments.media
 			removeEventListener( Event.REMOVED_FROM_STAGE, onRemoved );			
 		}
 
+		/**
+		 * Check the visibility of the bitmap bassed on his parents visibility
+		 */
 		private function checkVisibleState( event : Event ) : void
 		{
 			visible = isVisible( this );
@@ -132,7 +139,7 @@ package es.xperiments.media
 			switch( true )
 			{
 				case e.type == Event.COMPLETE:
-					_bridge.initJavascriptCommunication();
+					_bridge.initJavascriptCommunication(  );
 					dispatchEvent( e );
 					break;
 				case e.type == LocationChangeEvent.LOCATION_CHANGING:
@@ -285,7 +292,6 @@ package es.xperiments.media
 		 */
 		public function loadString( text : String, mimeType : String = "text/html" ) : void
 		{
-			// text = text.replace( new RegExp( 'appfile:', 'g' ), StageWebViewDisk.applicationCacheDirectory );
 			text = text.replace( new RegExp( '<head>', 'g' ), '<head><script type="text/javascript">' + StageWebViewDisk.JSCODE + '</script>' );
 			_view.loadString( text, mimeType );
 		}

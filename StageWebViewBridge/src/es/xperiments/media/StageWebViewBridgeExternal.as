@@ -42,7 +42,8 @@ package es.xperiments.media
 		internal function initJavascriptCommunication( ):void
 		{
 			_activeStage.loadURL("javascript:");
-		}
+			call('StageWebViewBridge.setRootPath',null, StageWebViewDisk.getRootPath(),StageWebViewDisk.getSourceRootPath(), StageWebViewDisk.getCachedExtensions() );				
+		} 
 
 		/**
 		 * Makes a call to a javascript function

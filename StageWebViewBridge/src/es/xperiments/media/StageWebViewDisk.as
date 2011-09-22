@@ -2,7 +2,6 @@ package es.xperiments.media
 {
 	import flash.display.Stage;
 	import flash.events.Event;
-
 	import flash.events.EventDispatcher;
 	import flash.filesystem.File;
 	import flash.filesystem.FileMode;
@@ -20,7 +19,7 @@ package es.xperiments.media
 		public static const isLINUX : Boolean = Capabilities.version.indexOf( 'LNX' ) != -1 ? true : false;
 		public static const isMAC : Boolean = Capabilities.version.indexOf( 'MAC' ) != -1 ? true : false;
 		public static const isWINDOWS : Boolean = Capabilities.version.indexOf( 'WIN' ) != -1 ? true : false;
-		public static const isDESKTOP : Boolean = ( isLINUX || isMAC || isWINDOWS );
+		public static const isDESKTOP : Boolean = ( (isLINUX && !isANDROID ) || isWINDOWS || isMAC );
 
 		private static var _applicationCacheDirectory : String;
 		private static var _applicationRootPath : String;
@@ -36,20 +35,25 @@ package es.xperiments.media
 		private static var _copyToFile : File = new File();
 		private static var _tempFileCounter : uint = 0;
 		private static var disp : EventDispatcher;
-		
+		private static var appFileIncludeRegexp:RegExp;
+		private static var _stage : Stage;
+		private static var _applicationSourcesDirectory : String;
+		private static const headRegexp:RegExp = new RegExp( '<head>', 'g' );
+				
 		// This is the javascript code that do the javascript bridge part
 		private static const JSXML : XML = <script>
-				<![CDATA[
-				(function(window)
+				<![CDATA[(function(window)
 				{
 					window.StageWebViewBridge = (function()
 					{         
 						var callBacks = [];
 						var rootPath = "";
-						
+						var sourcePath = "";
+						var cached_extensions = [];
+						var fileRegex;
 						var doCall = function( jsonArgs )
 						{
-							setTimeout(function() { deferredDoCall(jsonArgs) },0 );
+							setTimeout(function() { deferredDoCall(jsonArgs); },0 );
 						};
 					    
 						var deferredDoCall = function( jsonArgs )
@@ -111,33 +115,42 @@ package es.xperiments.media
 						};	
 						var getFilePath = function( fileName )
 						{
-							return rootPath+'/'+fileName.split('jsfile:/')[1];
+							if( fileRegex.exec(fileName) != null )
+							{
+								return rootPath+'/'+fileName.split('jsfile:/')[1];
+							}
+							else
+							{
+								return sourcePath+'/'+fileName.split('jsfile:/')[1];
+							}
+							
 						};
-						var setRootPath = function( path )
+						var setRootPath = function( path, sPath, cached )
 						{
+							cached_extensions = cached;
+							fileRegex =new RegExp(( "\(jsfile:\/\)\(\[\\w\-\\\.\\\/%\]\+\("+cached_extensions.join('\|')+"\)\)" ),"gixsm");
+							sourcePath = sPath;
 							rootPath = path;	
 						};
 						window.onload = function()
 						{
-							call( "getRootPath" , setRootPath );
+							/*call( "getRootPath" , setRootPath );*/
 						};
 						return {
 							doCall: doCall,
 				            call: call,
-							getFilePath:getFilePath
+							getFilePath:getFilePath,
+							setRootPath:setRootPath
 						};
 					})();
-				})(window);
-				
-				
-				]]>
+				})(window);]]>
 			</script>;
 
 		public static var JSCODE : String  =
 			JSXML.toString()
 			.replace( new RegExp( "\\n", "g" ), "" )
-		.replace( new RegExp( "\\t", "g" ), "" );
-		private static var _stage : Stage;
+			.replace( new RegExp( "\\t", "g" ), "" );
+
 
 
 		/**
@@ -169,21 +182,28 @@ package es.xperiments.media
 				case isANDROID:
 					appCacheFile = File.applicationStorageDirectory;
 					_applicationCacheDirectory = new File( appCacheFile.nativePath ).url;
+					_applicationRootPath = _applicationCacheDirectory + '/' + getWorkingDir();
+					_applicationSourcesDirectory =_applicationRootPath;
 					
 					break;
 				// IOS
 				case isIPHONE :
-					appCacheFile = new File( new File( "app:/" ).nativePath );
-					_applicationCacheDirectory = appCacheFile.url;
+					appCacheFile = File.applicationStorageDirectory;
+					_applicationCacheDirectory = new File( appCacheFile.nativePath ).url;
+					_applicationRootPath = _applicationCacheDirectory + '/' + getWorkingDir(); 
+					_applicationSourcesDirectory = 	new File( new File( "app:/"+_document_root ).nativePath ).url;	
+								
 					break;
 				// DESKTOP OSX
 				case isDESKTOP:
 					appCacheFile = new File( new File( "app:/" ).nativePath );
 					_applicationCacheDirectory = appCacheFile.url;
+					_applicationRootPath = _applicationCacheDirectory + '/' + getWorkingDir(); 
+					_applicationSourcesDirectory = _applicationRootPath;
 					break;
 			}
 			
-			_applicationRootPath = _applicationCacheDirectory + '/' + getWorkingDir(); 
+
 
 			// Determine if is ther first time that the application runs
 			_firstRun = new File( _applicationCacheDirectory ).resolvePath( '.swvbinit' ).exists ? false : true;
@@ -218,6 +238,7 @@ package es.xperiments.media
 		public static function setExtensionsToProcess( extensions : Array ) : void
 		{
 			_cached_extensions = extensions;
+			appFileIncludeRegexp = new RegExp("\(\?P<protocol>appfile:\/\)\(\?P<file>\[\\w\-\\\.\\\/%\]\+\(\?P<extension>"+extensions.join('\|')+"\)\)","gixsm");
 		}
 
 		/**
@@ -227,8 +248,8 @@ package es.xperiments.media
 		 */
 		internal static function createTempFile( contents : String, extension : String = "html" ) : File
 		{
-			contents = contents.replace( new RegExp( 'appfile:', 'g' ), _applicationRootPath );
-			contents = contents.replace( new RegExp( '<head>', 'g' ), '<head><script type="text/javascript">' + JSCODE + '</script>' );
+			contents = parseAppFile( contents );
+			contents = contents.replace( headRegexp, '<head><script type="text/javascript">' + JSCODE + '</script>' );
 			_fileStream = new FileStream();
 			_tmpFile = appCacheFile.resolvePath( 'SWVBTmp/' + ( _tempFileCounter++) + '.' + extension );
 			_fileStream.open( _tmpFile, FileMode.WRITE );
@@ -245,8 +266,8 @@ package es.xperiments.media
 		 */
 		public static function createFile( fileName : String, contents : String, isHtml : Boolean = true ) : File
 		{
-			contents = contents.replace( new RegExp( 'appfile:', 'g' ), _applicationRootPath );
-			if ( isHtml ) contents = contents.replace( new RegExp( '<head>', 'g' ), '<head><script type="text/javascript">' + JSCODE + '</script>' );
+			contents = parseAppFile( contents );
+			if ( isHtml ) contents = contents.replace( headRegexp, '<head><script type="text/javascript">' + JSCODE + '</script>' );
 			_fileStream = new FileStream();
 			_tmpFile = appCacheFile.resolvePath( getWorkingDir() + fileName.split( 'appfile:' )[1] );
 			_fileStream.open( _tmpFile, FileMode.WRITE );
@@ -264,13 +285,7 @@ package es.xperiments.media
 			return StageWebViewDisk.appCacheFile.resolvePath( getWorkingDir() + '/' + fileName ).nativePath;
 		}
 
-		/**
-		 * Returns the path to the www root filesystem
-		 */
-		public static function getRootPath( ) : String
-		{
-			return _applicationRootPath;
-		}
+
 
 		/* STATIC EVENT DISPATCHER */
 		public static function addEventListener( p_type : String, p_listener : Function, p_useCapture : Boolean = false, p_priority : int = 0, p_useWeakReference : Boolean = false ) : void
@@ -302,6 +317,36 @@ package es.xperiments.media
 
 
 
+
+		/**
+		 * Returns the Main path to the www root filesystem
+		 */
+		public static function getRootPath( ) : String
+		{
+			return _applicationRootPath;
+		}
+
+		/**
+		 * Return the path of the cached files dir ( DESKTOP/ANDROID == getRootPath | iOS = "app:/www" as this uses less cache files )
+		 */
+		public static function getSourceRootPath() : String
+		{
+			return _applicationSourcesDirectory;
+		}
+
+		
+		/**
+		 * returns Array of current cachedExtensions
+		 */
+		public static function getCachedExtensions() : Array
+		{
+			return _cached_extensions;
+		}
+
+
+		/**
+		 * Determines the actual working dir based on debugMode and plattform
+		 */
 		private static function getWorkingDir() : String
 		{
 			switch( true )
@@ -310,8 +355,6 @@ package es.xperiments.media
 					return _debugMode ? _document_source : _document_root;
 					break;
 				case isIPHONE:
-					return _document_root;
-					break;
 				case isANDROID:
 					return _document_source;
 					break;
@@ -355,15 +398,26 @@ package es.xperiments.media
 					switch( true )
 					{
 						case isDESKTOP:
-							if ( _debugMode ) fileList[e].copyTo( appCacheFile.resolvePath( _document_source + '/' + fileList[e].name ), true );
+							// if debug mode copy the file to the wwwSource dir
+							if ( _debugMode )
+							{
+								fileList[e].copyTo( appCacheFile.resolvePath( _document_source + '/' + fileList[e].name ), true );
+							}
+							// else
+							// Do nothing as this files are "resources" and we can reference it from its original path
 							break;
 						case isANDROID:
+							// copy the files to the destination path, as we need a copy to reference the file
 							fileList[e].copyTo( appCacheFile.resolvePath( _document_source + '/' + fileList[e].name ), true );
 							break;
+						case isIPHONE:
+							// Do nothing as this files are "resources" and we can reference it from its original path
+							break;	
 					}
 				}
 			}
 			var firstRunFile : File = new File( _applicationCacheDirectory ).resolvePath( '.swvbinit' );
+			_fileStream = new FileStream();
 			_fileStream.open( firstRunFile, FileMode.WRITE );
 			_fileStream.writeUTF( "init" );
 			_fileStream.close();
@@ -391,11 +445,11 @@ package es.xperiments.media
 			var originalFileContents : String = _fileStream.readUTFBytes( _fileStream.bytesAvailable );
 			_fileStream.close();
 
-			// parse file contents to change path values
-			var fileContents : String = originalFileContents.split( 'appfile:' ).join( _applicationRootPath );
+			var fileContents : String = parseAppFile( originalFileContents );
 			fileContents = fileContents.split( '<head>' ).join( '<head><script type="text/javascript">' + JSCODE + '</script>' );
 
 			// write file to the cache dir
+			_fileStream = new FileStream();
 			_fileStream.open( _copyToFile, FileMode.WRITE );
 			_fileStream.writeUTFBytes( fileContents );
 			_fileStream.close();
@@ -430,9 +484,35 @@ package es.xperiments.media
 			}
 		}
 
+		/**
+		 * Gets a reference to the global stage
+		 */
 		static public function get stage() : Stage
 		{
 			return _stage;
 		}
+		
+		/**
+		 * Parses the provided source searching files that contains the
+		 * appfile:/ protocol then changes the path according to the extension of the file.
+		 */
+		private static function parseAppFile( str:String ):String
+		{
+			// Search for files that ARE in the cached_extensions list
+			// Repaces the path with a path with file:// protocol
+			var result:Object = appFileIncludeRegexp.exec(str);
+			while( result != null )
+			{
+				str = str.replace( appFileIncludeRegexp, _applicationRootPath+"/$2" ) ;
+				result = appFileIncludeRegexp.exec(str);
+			}
+			
+			//Search for files that AREN'T in the cached_extensions list
+			//Repaces the path with a path with file:// protocol
+			str = str.split('appfile:').join( _applicationSourcesDirectory );
+			return str;			
+		}
+
+
 	}
 }
