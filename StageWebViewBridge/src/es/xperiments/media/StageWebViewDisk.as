@@ -206,7 +206,7 @@ package es.xperiments.media
 
 
 			// Determine if is ther first time that the application runs
-			_firstRun = new File( _applicationCacheDirectory ).resolvePath( '.swvbinit' ).exists ? false : true;
+			_firstRun = new File( _applicationCacheDirectory ).resolvePath( 'swvb.init' ).exists ? false : true;
 
 			// If first run or in DebugMode run the "diskCaching"
 			if ( _firstRun || _debugMode )
@@ -416,7 +416,7 @@ package es.xperiments.media
 					}
 				}
 			}
-			var firstRunFile : File = new File( _applicationCacheDirectory ).resolvePath( '.swvbinit' );
+			var firstRunFile : File = new File( _applicationCacheDirectory ).resolvePath( 'swvb.init' );
 			_fileStream = new FileStream();
 			_fileStream.open( firstRunFile, FileMode.WRITE );
 			_fileStream.writeUTF( "init" );
@@ -438,7 +438,7 @@ package es.xperiments.media
 		{
 			_copyFromFile.url = file.url;
 			_copyToFile.nativePath = appCacheFile.resolvePath( getWorkingDir() + '/' + file.url.split( 'app:/' + _document_root + '/' )[1] ).nativePath;
-
+			trace( _copyToFile.nativePath )
 			// get original file contents
 			_fileStream = new FileStream();
 			_fileStream.open( _copyFromFile, FileMode.READ );
