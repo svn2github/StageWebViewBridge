@@ -1,5 +1,6 @@
 package es.xperiments.media
 {
+	import flash.utils.ByteArray;
 	import flash.display.Stage;
 	import flash.events.Event;
 	import flash.events.EventDispatcher;
@@ -20,11 +21,12 @@ package es.xperiments.media
 		public static const isMAC : Boolean = Capabilities.version.indexOf( 'MAC' ) != -1 ? true : false;
 		public static const isWINDOWS : Boolean = Capabilities.version.indexOf( 'WIN' ) != -1 ? true : false;
 		public static const isDESKTOP : Boolean = ( (isLINUX && !isANDROID ) || isWINDOWS || isMAC );
+		public static var JSCODE : String;
 
 		private static var _applicationCacheDirectory : String;
 		private static var _applicationRootPath : String;
 		private static var _debugMode : Boolean = false;
-		private static var appCacheFile : File ;
+		private static var _appCacheFile : File ;
 		private static var _cached_extensions : Array = [ "html", "htm", "css", "js" ];
 		private static var _document_root : String = "www";
 		private static var _document_source : String = _document_root + "Source";
@@ -34,124 +36,14 @@ package es.xperiments.media
 		private static var _copyFromFile : File = new File();
 		private static var _copyToFile : File = new File();
 		private static var _tempFileCounter : uint = 0;
-		private static var disp : EventDispatcher;
-		private static var appFileIncludeRegexp:RegExp;
+		private static var _disp : EventDispatcher;
+		private static var _appFileIncludeRegexp:RegExp;
 		private static var _stage : Stage;
 		private static var _applicationSourcesDirectory : String;
-		private static const headRegexp:RegExp = new RegExp( '<head>', 'g' );
-				
-		// This is the javascript code that do the javascript bridge part
-		private static const JSXML : XML = <script>
-				<![CDATA[(function(window)
-				{
-					window.StageWebViewBridge = (function()
-					{         
-						var callBacks = [];
-						var rootPath = "";
-						var sourcePath = "";
-						var cached_extensions = [];
-						var fileRegex;
-						var doCall = function( jsonArgs )
-						{
-							setTimeout(function() { deferredDoCall(jsonArgs); },0 );
-						};
-					    
-						var deferredDoCall = function( jsonArgs )
-						{
-							var _serializeObject = JSON.parse( atob( jsonArgs ) );
-							var method = _serializeObject.method;
-							var returnValue = true;
-							if( method.indexOf('[SWVMethod]')==-1 )
-							{			
-								var targetFunction;
-								if( method.indexOf('.')==-1)
-								{
-									targetFunction = window[ method ];
-								}
-								else
-								{
-									var splitedPath = method.split('.');
-									targetFunction=window;
-									for( var i=0; i<splitedPath.length; i++ )
-									{
-										targetFunction = targetFunction[ splitedPath[ i ] ];
-									};
-								};
-								returnValue = targetFunction.apply(null, _serializeObject.arguments );
-							}
-							else
-							{
-								var targetFunction = callBacks[ method ];
-								returnValue = targetFunction.apply(null, _serializeObject.arguments );
-							};
-				
-							if( _serializeObject.callBack !=undefined  )
-							{	
-								call( _serializeObject.callBack, null, returnValue );  		
-							};							
-						}; 
-						var call = function( )
-						{
-							var argumentsArray = [];
-							var _serializeObject = {};
-								_serializeObject.method = arguments[ 0 ];
-							if( arguments[ 1 ] !=null ) _serializeObject.callBack = '[SWVMethod]'+arguments[ 0 ];
-				
-							if( arguments.length>2)
-							{
-								for (var i = 2; i < arguments.length; i++)
-								{
-									argumentsArray.push( arguments[ i ] );
-								};
-							};
-				
-							_serializeObject.arguments = argumentsArray;
-							if( _serializeObject.callBack !=undefined ) { addCallback('[SWVMethod]'+arguments[ 0 ], arguments[ 1 ] ); };
-							window.location.href='about:[SWVData]'+btoa( JSON.stringify( _serializeObject ) );
-						};
-						var addCallback = function( name, fn )
-						{
-							callBacks[ name ] = fn;
-						};	
-						var getFilePath = function( fileName )
-						{
-							if( fileRegex.exec(fileName) != null )
-							{
-								return rootPath+'/'+fileName.split('jsfile:/')[1];
-							}
-							else
-							{
-								return sourcePath+'/'+fileName.split('jsfile:/')[1];
-							}
-							
-						};
-						var setRootPath = function( path, sPath, cached )
-						{
-							cached_extensions = cached;
-							fileRegex =new RegExp(( "\(jsfile:\/\)\(\[\\w\-\\\.\\\/%\]\+\("+cached_extensions.join('\|')+"\)\)" ),"gixsm");
-							sourcePath = sPath;
-							rootPath = path;	
-						};
-						window.onload = function()
-						{
-							/*call( "getRootPath" , setRootPath );*/
-						};
-						return {
-							doCall: doCall,
-				            call: call,
-							getFilePath:getFilePath,
-							setRootPath:setRootPath
-						};
-					})();
-				})(window);]]>
-			</script>;
-
-		public static var JSCODE : String  =
-			JSXML.toString()
-			.replace( new RegExp( "\\n", "g" ), "" )
-			.replace( new RegExp( "\\t", "g" ), "" );
-
-
+		private static const _headRegexp:RegExp = new RegExp( '<head>', 'g' );
+		
+		[Embed(source='StageWebViewBridge.js', mimeType="application/octet-stream")]
+		private static const EMBEDJS:Class; // Embed the javascript file used in injection or remote
 
 		/**
 		 * Main init function
@@ -170,6 +62,7 @@ package es.xperiments.media
 		 */
 		public static function initialize( stage:Stage ) : void
 		{
+			initJSCODE();
 			if( stage == null ) 
 			{
 				throw new Error("StageWebViewDisk.initialize( stage ) :: You mus provide a valid stage instance");
@@ -180,24 +73,24 @@ package es.xperiments.media
 			{
 				// ANDROID
 				case isANDROID:
-					appCacheFile = File.applicationStorageDirectory;
-					_applicationCacheDirectory = new File( appCacheFile.nativePath ).url;
+					_appCacheFile = File.applicationStorageDirectory;
+					_applicationCacheDirectory = new File( _appCacheFile.nativePath ).url;
 					_applicationRootPath = _applicationCacheDirectory + '/' + getWorkingDir();
 					_applicationSourcesDirectory =_applicationRootPath;
 					
 					break;
 				// IOS
 				case isIPHONE :
-					appCacheFile = File.applicationStorageDirectory;
-					_applicationCacheDirectory = new File( appCacheFile.nativePath ).url;
+					_appCacheFile = File.applicationStorageDirectory;
+					_applicationCacheDirectory = new File( _appCacheFile.nativePath ).url;
 					_applicationRootPath = _applicationCacheDirectory + '/' + getWorkingDir(); 
 					_applicationSourcesDirectory = 	new File( new File( "app:/"+_document_root ).nativePath ).url;	
 								
 					break;
 				// DESKTOP OSX
 				case isDESKTOP:
-					appCacheFile = new File( new File( "app:/" ).nativePath );
-					_applicationCacheDirectory = appCacheFile.url;
+					_appCacheFile = new File( new File( "app:/" ).nativePath );
+					_applicationCacheDirectory = _appCacheFile.url;
 					_applicationRootPath = _applicationCacheDirectory + '/' + getWorkingDir(); 
 					_applicationSourcesDirectory = _applicationRootPath;
 					break;
@@ -222,6 +115,18 @@ package es.xperiments.media
 			deleteTempFolder();
 		}
 
+		private static function initJSCODE() : void
+		{
+			var file:ByteArray = new EMBEDJS();
+			var str:String = file.readUTFBytes( file.length );
+			
+
+			
+			JSCODE = str.toString()
+			.replace( new RegExp( "\\n", "g" ), "" )
+			.replace( new RegExp( "\\t", "g" ), "" );			
+		}
+
 		/**
 		 * Enables / Disables DEBUG MODE
 		 */
@@ -238,7 +143,7 @@ package es.xperiments.media
 		public static function setExtensionsToProcess( extensions : Array ) : void
 		{
 			_cached_extensions = extensions;
-			appFileIncludeRegexp = new RegExp("\(\?P<protocol>appfile:\/\)\(\?P<file>\[\\w\-\\\.\\\/%\]\+\(\?P<extension>"+extensions.join('\|')+"\)\)","gixsm");
+			_appFileIncludeRegexp = new RegExp("\(\?P<protocol>appfile:\/\)\(\?P<file>\[\\w\-\\\.\\\/%\]\+\(\?P<extension>"+extensions.join('\|')+"\)\)","gixsm");
 		}
 
 		/**
@@ -249,9 +154,9 @@ package es.xperiments.media
 		internal static function createTempFile( contents : String, extension : String = "html" ) : File
 		{
 			contents = parseAppFile( contents );
-			contents = contents.replace( headRegexp, '<head><script type="text/javascript">' + JSCODE + '</script>' );
+			contents = contents.replace( _headRegexp, '<head><script type="text/javascript">' + JSCODE + '</script>' );
 			_fileStream = new FileStream();
-			_tmpFile = appCacheFile.resolvePath( 'SWVBTmp/' + ( _tempFileCounter++) + '.' + extension );
+			_tmpFile = _appCacheFile.resolvePath( 'SWVBTmp/' + ( _tempFileCounter++) + '.' + extension );
 			_fileStream.open( _tmpFile, FileMode.WRITE );
 			_fileStream.writeUTFBytes( contents );
 			_fileStream.close();
@@ -267,9 +172,9 @@ package es.xperiments.media
 		public static function createFile( fileName : String, contents : String, isHtml : Boolean = true ) : File
 		{
 			contents = parseAppFile( contents );
-			if ( isHtml ) contents = contents.replace( headRegexp, '<head><script type="text/javascript">' + JSCODE + '</script>' );
+			if ( isHtml ) contents = contents.replace( _headRegexp, '<head><script type="text/javascript">' + JSCODE + '</script>' );
 			_fileStream = new FileStream();
-			_tmpFile = appCacheFile.resolvePath( getWorkingDir() + fileName.split( 'appfile:' )[1] );
+			_tmpFile = _appCacheFile.resolvePath( getWorkingDir() + fileName.split( 'appfile:' )[1] );
 			_fileStream.open( _tmpFile, FileMode.WRITE );
 			_fileStream.writeUTFBytes( contents );
 			_fileStream.close();
@@ -282,7 +187,7 @@ package es.xperiments.media
 		 */
 		public static function getFilePath( fileName : String ) : String
 		{
-			return StageWebViewDisk.appCacheFile.resolvePath( getWorkingDir() + '/' + fileName ).nativePath;
+			return StageWebViewDisk._appCacheFile.resolvePath( getWorkingDir() + '/' + fileName ).nativePath;
 		}
 
 
@@ -290,29 +195,29 @@ package es.xperiments.media
 		/* STATIC EVENT DISPATCHER */
 		public static function addEventListener( p_type : String, p_listener : Function, p_useCapture : Boolean = false, p_priority : int = 0, p_useWeakReference : Boolean = false ) : void
 		{
-			if (disp == null)
+			if (_disp == null)
 			{
-				disp = new EventDispatcher();
+				_disp = new EventDispatcher();
 			}
-			disp.addEventListener( p_type, p_listener, p_useCapture, p_priority, p_useWeakReference );
+			_disp.addEventListener( p_type, p_listener, p_useCapture, p_priority, p_useWeakReference );
 		}
 
 		public static function removeEventListener( p_type : String, p_listener : Function, p_useCapture : Boolean = false ) : void
 		{
-			if (disp == null)
+			if (_disp == null)
 			{
 				return;
 			}
-			disp.removeEventListener( p_type, p_listener, p_useCapture );
+			_disp.removeEventListener( p_type, p_listener, p_useCapture );
 		}
 
 		public static function dispatchEvent( p_event : Event ) : void
 		{
-			if (disp == null)
+			if (_disp == null)
 			{
 				return;
 			}
-			disp.dispatchEvent( p_event );
+			_disp.dispatchEvent( p_event );
 		}
 
 
@@ -367,7 +272,7 @@ package es.xperiments.media
 		 */
 		private static function deleteTempFolder() : void
 		{
-			var tmpFile : File = appCacheFile.resolvePath( 'SWVBTmp' );
+			var tmpFile : File = _appCacheFile.resolvePath( 'SWVBTmp' );
 			if ( tmpFile.exists )
 			{
 				tmpFile.deleteDirectory( true );
@@ -401,14 +306,14 @@ package es.xperiments.media
 							// if debug mode copy the file to the wwwSource dir
 							if ( _debugMode )
 							{
-								fileList[e].copyTo( appCacheFile.resolvePath( _document_source + '/' + fileList[e].name ), true );
+								fileList[e].copyTo( _appCacheFile.resolvePath( _document_source + '/' + fileList[e].name ), true );
 							}
 							// else
 							// Do nothing as this files are "resources" and we can reference it from its original path
 							break;
 						case isANDROID:
 							// copy the files to the destination path, as we need a copy to reference the file
-							fileList[e].copyTo( appCacheFile.resolvePath( _document_source + '/' + fileList[e].name ), true );
+							fileList[e].copyTo( _appCacheFile.resolvePath( _document_source + '/' + fileList[e].name ), true );
 							break;
 						case isIPHONE:
 							// Do nothing as this files are "resources" and we can reference it from its original path
@@ -432,13 +337,11 @@ package es.xperiments.media
 		 * Replaces the appfile:/ protocol width the real path on disc
 		 * 
 		 * @param file File to parse
-		 * @pa
 		 */
 		private static function preparseFile( file : File ) : void
 		{
 			_copyFromFile.url = file.url;
-			_copyToFile.nativePath = appCacheFile.resolvePath( getWorkingDir() + '/' + file.url.split( 'app:/' + _document_root + '/' )[1] ).nativePath;
-			trace( _copyToFile.nativePath )
+			_copyToFile.nativePath = _appCacheFile.resolvePath( getWorkingDir() + '/' + file.url.split( 'app:/' + _document_root + '/' )[1] ).nativePath;
 			// get original file contents
 			_fileStream = new FileStream();
 			_fileStream.open( _copyFromFile, FileMode.READ );
@@ -500,11 +403,11 @@ package es.xperiments.media
 		{
 			// Search for files that ARE in the cached_extensions list
 			// Repaces the path with a path with file:// protocol
-			var result:Object = appFileIncludeRegexp.exec(str);
+			var result:Object = _appFileIncludeRegexp.exec(str);
 			while( result != null )
 			{
-				str = str.replace( appFileIncludeRegexp, _applicationRootPath+"/$2" ) ;
-				result = appFileIncludeRegexp.exec(str);
+				str = str.replace( _appFileIncludeRegexp, _applicationRootPath+"/$2" ) ;
+				result = _appFileIncludeRegexp.exec(str);
 			}
 			
 			//Search for files that AREN'T in the cached_extensions list
