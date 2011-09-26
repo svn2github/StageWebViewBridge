@@ -55,6 +55,7 @@ package es.xperiments.media
 		 */
 		public function StageWebViewBridge( xpos : uint = 0, ypos : uint = 0, w : uint = 400, h : uint = 400, autoVisibleUpdate:Boolean = true )
 		{
+			super( );
 			_autoVisibleUpdate = autoVisibleUpdate;
 			_viewPort = new Rectangle( 0, 0, w, h );
 			_view = new StageWebView();
@@ -236,8 +237,16 @@ package es.xperiments.media
 			_view.assignFocus( direction );
 		}
 
+		/**
+		 * Frees memory that is used to store the StageWebViewBridge object. 
+		 * All subsequent calls to methods or properties of this StageWebViewBridge instance fail, and an exception is thrown.  
+		 */
 		public function dispose() : void
 		{
+			if( hasEventListener(Event.EXIT_FRAME) ) removeEventListener(Event.EXIT_FRAME, checkVisibleState );
+			if( hasEventListener(Event.REMOVED_FROM_STAGE) ) removeEventListener( Event.REMOVED_FROM_STAGE, onRemoved );	
+			if( hasEventListener(Event.ADDED_TO_STAGE) ) removeEventListener( Event.ADDED_TO_STAGE, onAdded );
+						
 			_view.removeEventListener( Event.COMPLETE, onListener );
 			_view.removeEventListener( ErrorEvent.ERROR, onListener );
 			_view.removeEventListener( FocusEvent.FOCUS_IN, onListener );
@@ -245,11 +254,12 @@ package es.xperiments.media
 			_view.removeEventListener( LocationChangeEvent.LOCATION_CHANGE, onListener );
 			_view.removeEventListener( LocationChangeEvent.LOCATION_CHANGING, onListener );
 			_view.dispose();
-			bitmapData.dispose();
+			if( bitmapData != null ) bitmapData.dispose();
 			_view = null;
 			_viewPort = null;
 			_tmpFile = null;
 			_bridge = null;
+			_getSnapShotCallBack = null;
 			System.gc();
 		}
 
