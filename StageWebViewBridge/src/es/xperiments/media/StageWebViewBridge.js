@@ -4,9 +4,11 @@
 	{         
 		var callBacks = [];
 		var rootPath = "";
+		var docsPath = "";
 		var sourcePath = "";
 		var cached_extensions = [];
 		var fileRegex;
+		var sendingProtocol = "";
 		var doCall = function( jsonArgs )
 		{
 			setTimeout(function() { deferredDoCall(jsonArgs); },0 );
@@ -63,7 +65,7 @@
 
 			_serializeObject.arguments = argumentsArray;
 			if( _serializeObject.callBack !=undefined ) { addCallback('[SWVMethod]'+arguments[ 0 ], arguments[ 1 ] ); };
-			window.location.href='about:[SWVData]'+btoa( JSON.stringify( _serializeObject ) );
+			window.location.href=sendingProtocol+'[SWVData]'+btoa( JSON.stringify( _serializeObject ) );
 		};
 		var addCallback = function( name, fn )
 		{
@@ -71,26 +73,31 @@
 		};	
 		var getFilePath = function( fileName )
 		{
-			if( fileRegex.exec(fileName) != null )
-			{
-				return rootPath+'/'+fileName.split('jsfile:/')[1];
-			}
-			else
-			{
-				return sourcePath+'/'+fileName.split('jsfile:/')[1];
-			}
+			if( fileName.indexOf('jsfile:') !=-1 )
+			{	
+				if( fileRegex.exec(fileName) != null )
+				{
+					return rootPath+'/'+fileName.split('jsfile:/')[1];
+				}
+				else
+				{
+					return sourcePath+'/'+fileName.split('jsfile:/')[1];
+				};
+			};
+			if( fileName.indexOf('jsdocfile:') !=-1 )
+			{	
+				return docsPath+'/'+fileName.split('jsdocfile:/')[1];
+			};			
 			
 		};
-		var setRootPath = function( path, sPath, cached )
+		var setRootPath = function( aRootPath, aSourcePath, aDocsPath, aCachedExtensions, asendingProtocol )
 		{
-			cached_extensions = cached;
+			sendingProtocol = asendingProtocol;
+			cached_extensions = aCachedExtensions;
 			fileRegex =new RegExp(( "\(jsfile:\/\)\(\[\\w\-\\\.\\\/%\]\+\("+cached_extensions.join('\|')+"\)\)" ),"gixsm");
-			sourcePath = sPath;
-			rootPath = path;	
-		};
-		window.onload = function()
-		{
-			/*call( "getRootPath" , setRootPath );*/
+			sourcePath = aSourcePath;
+			rootPath = aRootPath;
+			docsPath = aDocsPath;
 		};
 		return {
 			doCall: doCall,

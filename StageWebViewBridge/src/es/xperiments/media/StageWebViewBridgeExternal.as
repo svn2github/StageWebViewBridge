@@ -15,6 +15,7 @@ limitations under the License.
 */
 package es.xperiments.media
 {
+	import flash.filesystem.File;
 	import by.blooddy.crypto.serialization.JSON;
 	import es.xperiments.utils.Base64;
 	import flash.events.EventDispatcher;
@@ -42,7 +43,7 @@ package es.xperiments.media
 		internal function initJavascriptCommunication( ):void
 		{
 			_activeStage.loadURL("javascript:");
-			call('StageWebViewBridge.setRootPath',null, StageWebViewDisk.getRootPath(),StageWebViewDisk.getSourceRootPath(), StageWebViewDisk.getCachedExtensions() );				
+			call('StageWebViewBridge.setRootPath',null, StageWebViewDisk.getRootPath(),StageWebViewDisk.getSourceRootPath(), File.documentsDirectory.url ,StageWebViewDisk.getCachedExtensions(), StageWebViewDisk.SENDING_PROTOCOL );				
 		} 
 
 		/**

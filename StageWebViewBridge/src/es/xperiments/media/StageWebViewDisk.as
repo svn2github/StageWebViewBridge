@@ -21,7 +21,15 @@ package es.xperiments.media
 		public static const isMAC : Boolean = Capabilities.version.indexOf( 'MAC' ) != -1 ? true : false;
 		public static const isWINDOWS : Boolean = Capabilities.version.indexOf( 'WIN' ) != -1 ? true : false;
 		public static const isDESKTOP : Boolean = ( (isLINUX && !isANDROID ) || isWINDOWS || isMAC );
+
+		public static const SENDING_PROTOCOL:String = StageWebViewDisk.isANDROID ? "tuoba:":"about:";
+
+		public static const PROTOCOL_APP_LINK:String = "applink:/";
+		public static const PROTOCOL_DOC_LINK:String = "doclink:/";
+
 		public static var JSCODE : String;
+
+
 
 		private static var _applicationCacheDirectory : String;
 		private static var _applicationRootPath : String;
@@ -120,8 +128,6 @@ package es.xperiments.media
 			var file:ByteArray = new EMBEDJS();
 			var str:String = file.readUTFBytes( file.length );
 			
-
-			
 			JSCODE = str.toString()
 			.replace( new RegExp( "\\n", "g" ), "" )
 			.replace( new RegExp( "\\t", "g" ), "" );			
@@ -185,9 +191,23 @@ package es.xperiments.media
 		 * Returns the native path for the fileName
 		 * @param fileName Name of the file
 		 */
-		public static function getFilePath( fileName : String ) : String
+		public static function getFilePath( url : String ) : String
 		{
-			return StageWebViewDisk._appCacheFile.resolvePath( getWorkingDir() + '/' + fileName ).nativePath;
+			var fileName:String = "";
+			switch( true )
+			{
+				case url.indexOf(PROTOCOL_APP_LINK) !=-1:
+					fileName = url.split( PROTOCOL_APP_LINK )[1];
+					return _appCacheFile.resolvePath( getWorkingDir() + '/' + fileName ).nativePath;
+				break;
+				case url.indexOf(PROTOCOL_DOC_LINK) !=-1:
+					fileName = url.split( PROTOCOL_DOC_LINK )[1];
+					return File.documentsDirectory.resolvePath( fileName ).nativePath;
+				break;
+				default:
+					throw new Error("StageWebViewDisk.getFilePath( url ) :: You mus provide a valid protocol applink:/ or doclink:/");	
+				break;	
+			}
 		}
 
 

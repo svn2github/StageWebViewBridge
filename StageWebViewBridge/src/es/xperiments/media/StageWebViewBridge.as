@@ -41,6 +41,7 @@ package es.xperiments.media
 		private var _snapShotVisible : Boolean = false;
 		private var _getSnapShotCallBack : Function;
 		private var _autoVisibleUpdate : Boolean;
+		private var _nextLoadInitJavascript : Boolean;
 
 		/**
 		 * @param xpos Indicates the initial x pos
@@ -139,7 +140,7 @@ package es.xperiments.media
 			switch( true )
 			{
 				case e.type == Event.COMPLETE:
-					_bridge.initJavascriptCommunication(  );
+					if( _nextLoadInitJavascript ) _bridge.initJavascriptCommunication(  );
 					dispatchEvent( e );
 					break;
 				case e.type == LocationChangeEvent.LOCATION_CHANGING:
@@ -147,9 +148,9 @@ package es.xperiments.media
 					switch( true )
 					{
 						// javascript calls actionscript
-						case currLocation.indexOf( 'about:[SWVData]' ) != -1:
+						case currLocation.indexOf( StageWebViewDisk.SENDING_PROTOCOL+'[SWVData]' ) != -1:
 							e.preventDefault();
-							_bridge.parseCallBack( currLocation.split( 'about:[SWVData]' )[1] );
+							_bridge.parseCallBack( currLocation.split( StageWebViewDisk.SENDING_PROTOCOL+'[SWVData]' )[1] );
 							break;
 						// load local pages
 						case currLocation.indexOf( 'applink:' ) != -1:
@@ -272,17 +273,23 @@ package es.xperiments.media
 		 * <img src="appfile:/image.png">
 		 * 
 		 * @param url	The url file with applink:/ protocol
-		 * 				
+		 * @param initJavascript Enables / Disables Javascript init at page load complete.				
 		 * 				Usage: stageWebViewBridge.loadLocalURL('applink:/index.html');
 		 */
-		public function loadLocalURL( url : String ) : void
+		public function loadLocalURL( url : String, initJavascript:Boolean = true ) : void
 		{
-			_tmpFile.nativePath = StageWebViewDisk.getFilePath( url.split( 'applink:/' )[1] );
+			_nextLoadInitJavascript = initJavascript;
+			_tmpFile.nativePath = StageWebViewDisk.getFilePath( url );
 			_view.loadURL( _tmpFile.url );
 		}
 
-		public function loadURL( url : String ) : void
+		/**
+		 * @param url The url to load
+		 * @param initJavascript Enables / Disables Javascript init at page load complete.
+		 */
+		public function loadURL( url : String, initJavascript:Boolean = true  ) : void
 		{
+			_nextLoadInitJavascript = initJavascript;
 			_view.loadURL( url );
 		}
 
@@ -326,7 +333,6 @@ package es.xperiments.media
 			_viewPort.width = w;
 			_viewPort.height = h;
 			viewPort = _viewPort;
-			generateSnapShotBitmap();
 		}
 
 		override public function get x() : Number
@@ -372,6 +378,7 @@ package es.xperiments.media
 		 */
 		public function getSnapShot() : void
 		{
+			bitmapData = new BitmapData( _viewPort.width, _viewPort.height, false, 0x000000 );
 			_view.drawViewPortToBitmapData( bitmapData );
 			var bridge : StageWebViewBridge = this;
 			addEventListener( Event.ENTER_FRAME, function( e : Event ) : void
@@ -392,13 +399,6 @@ package es.xperiments.media
 			super.visible = mode;
 		}
 
-		/**
-		 * Generates a new BitmapData for the new dimensions
-		 */
-		private function generateSnapShotBitmap() : void
-		{
-			bitmapData = new BitmapData( _viewPort.width, _viewPort.height, false, 0x000000 );
-		}
 
 		/**
 		 * Makes a call to a javascript function
