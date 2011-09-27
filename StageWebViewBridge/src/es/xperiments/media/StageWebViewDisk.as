@@ -35,7 +35,7 @@ package es.xperiments.media
 		public static const isLINUX : Boolean = Capabilities.version.indexOf( 'LNX' ) != -1 ? true : false;
 		public static const isMAC : Boolean = Capabilities.version.indexOf( 'MAC' ) != -1 ? true : false;
 		public static const isWINDOWS : Boolean = Capabilities.version.indexOf( 'WIN' ) != -1 ? true : false;
-		public static const isDESKTOP : Boolean = ( (isLINUX && !isANDROID ) || isWINDOWS || isMAC );
+		public static const isDESKTOP : Boolean = ( (isLINUX && !isANDROID ) || isWINDOWS || isMAC || Capabilities.isDebugger );
 
 		public static const SENDING_PROTOCOL:String = StageWebViewDisk.isANDROID ? "tuoba:":"about:";
 

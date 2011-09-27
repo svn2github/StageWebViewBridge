@@ -53,9 +53,9 @@ package es.xperiments.media
 		 *  var testBridge:StageWebViewBridge = new StageWebViewBridge( );
 		 * 
 		 */
-		public function StageWebViewBridge( xpos : uint = 0, ypos : uint = 0, w : uint = 400, h : uint = 400, autoVisibleUpdate:Boolean = true )
+		public function StageWebViewBridge( xpos : uint = 0, ypos : uint = 0, w : uint = 400, h : uint = 400, autoVisibleUpdate : Boolean = true )
 		{
-			super( );
+			super();
 			_autoVisibleUpdate = autoVisibleUpdate;
 			_viewPort = new Rectangle( 0, 0, w, h );
 			_view = new StageWebView();
@@ -102,15 +102,15 @@ package es.xperiments.media
 			_viewPort.x = _translatedPoint.x;
 			_viewPort.y = _translatedPoint.y;
 			viewPort = _viewPort;
-			
-			if( _autoVisibleUpdate )
+
+			if ( _autoVisibleUpdate )
 			{
-				addEventListener(Event.EXIT_FRAME, checkVisibleState );
+				addEventListener( Event.EXIT_FRAME, checkVisibleState );
 				addEventListener( Event.REMOVED_FROM_STAGE, onRemoved );
 			}
 			else
 			{
-				removeEventListener( Event.ADDED_TO_STAGE, onAdded );			
+				removeEventListener( Event.ADDED_TO_STAGE, onAdded );
 			}
 		}
 
@@ -121,8 +121,8 @@ package es.xperiments.media
 		private function onRemoved( event : Event ) : void
 		{
 			_view.stage = null;
-			removeEventListener(Event.EXIT_FRAME, checkVisibleState );
-			removeEventListener( Event.REMOVED_FROM_STAGE, onRemoved );			
+			removeEventListener( Event.EXIT_FRAME, checkVisibleState );
+			removeEventListener( Event.REMOVED_FROM_STAGE, onRemoved );
 		}
 
 		/**
@@ -141,7 +141,7 @@ package es.xperiments.media
 			switch( true )
 			{
 				case e.type == Event.COMPLETE:
-					if( _nextLoadInitJavascript ) _bridge.initJavascriptCommunication(  );
+					if ( _nextLoadInitJavascript ) _bridge.initJavascriptCommunication();
 					dispatchEvent( e );
 					break;
 				case e.type == LocationChangeEvent.LOCATION_CHANGING:
@@ -149,9 +149,9 @@ package es.xperiments.media
 					switch( true )
 					{
 						// javascript calls actionscript
-						case currLocation.indexOf( StageWebViewDisk.SENDING_PROTOCOL+'[SWVData]' ) != -1:
+						case currLocation.indexOf( StageWebViewDisk.SENDING_PROTOCOL + '[SWVData]' ) != -1:
 							e.preventDefault();
-							_bridge.parseCallBack( currLocation.split( StageWebViewDisk.SENDING_PROTOCOL+'[SWVData]' )[1] );
+							_bridge.parseCallBack( currLocation.split( StageWebViewDisk.SENDING_PROTOCOL + '[SWVData]' )[1] );
 							break;
 						// load local pages
 						case currLocation.indexOf( 'applink:' ) != -1:
@@ -161,7 +161,7 @@ package es.xperiments.media
 					}
 					break;
 				default:
-					dispatchEvent( e );
+					if ( hasEventListener( e.type ) ) dispatchEvent( e );
 					break;
 			}
 		}
@@ -175,6 +175,10 @@ package es.xperiments.media
 			switch( type )
 			{
 				case LocationChangeEvent.LOCATION_CHANGING:
+					_view.addEventListener( type, listener, useCapture, priority, useWeakReference );
+					break;
+				case FocusEvent.FOCUS_IN:
+				case FocusEvent.FOCUS_OUT:
 					_view.addEventListener( type, listener, useCapture, priority, useWeakReference );
 					break;
 				default:
@@ -194,6 +198,10 @@ package es.xperiments.media
 				case LocationChangeEvent.LOCATION_CHANGING:
 					_view.removeEventListener( type, listener, useCapture );
 					break;
+				case FocusEvent.FOCUS_IN:
+				case FocusEvent.FOCUS_OUT:
+					_view.removeEventListener( type, listener, useCapture );
+					break;					
 				default:
 					super.removeEventListener( type, listener, useCapture );
 					break;
@@ -243,10 +251,10 @@ package es.xperiments.media
 		 */
 		public function dispose() : void
 		{
-			if( hasEventListener(Event.EXIT_FRAME) ) removeEventListener(Event.EXIT_FRAME, checkVisibleState );
-			if( hasEventListener(Event.REMOVED_FROM_STAGE) ) removeEventListener( Event.REMOVED_FROM_STAGE, onRemoved );	
-			if( hasEventListener(Event.ADDED_TO_STAGE) ) removeEventListener( Event.ADDED_TO_STAGE, onAdded );
-						
+			if ( hasEventListener( Event.EXIT_FRAME ) ) removeEventListener( Event.EXIT_FRAME, checkVisibleState );
+			if ( hasEventListener( Event.REMOVED_FROM_STAGE ) ) removeEventListener( Event.REMOVED_FROM_STAGE, onRemoved );
+			if ( hasEventListener( Event.ADDED_TO_STAGE ) ) removeEventListener( Event.ADDED_TO_STAGE, onAdded );
+
 			_view.removeEventListener( Event.COMPLETE, onListener );
 			_view.removeEventListener( ErrorEvent.ERROR, onListener );
 			_view.removeEventListener( FocusEvent.FOCUS_IN, onListener );
@@ -254,7 +262,7 @@ package es.xperiments.media
 			_view.removeEventListener( LocationChangeEvent.LOCATION_CHANGE, onListener );
 			_view.removeEventListener( LocationChangeEvent.LOCATION_CHANGING, onListener );
 			_view.dispose();
-			if( bitmapData != null ) bitmapData.dispose();
+			if ( bitmapData != null ) bitmapData.dispose();
 			_view = null;
 			_viewPort = null;
 			_tmpFile = null;
@@ -286,7 +294,7 @@ package es.xperiments.media
 		 * @param initJavascript Enables / Disables Javascript init at page load complete.				
 		 * 				Usage: stageWebViewBridge.loadLocalURL('applink:/index.html');
 		 */
-		public function loadLocalURL( url : String, initJavascript:Boolean = true ) : void
+		public function loadLocalURL( url : String, initJavascript : Boolean = true ) : void
 		{
 			_nextLoadInitJavascript = initJavascript;
 			_tmpFile.nativePath = StageWebViewDisk.getFilePath( url );
@@ -297,7 +305,7 @@ package es.xperiments.media
 		 * @param url The url to load
 		 * @param initJavascript Enables / Disables Javascript init at page load complete.
 		 */
-		public function loadURL( url : String, initJavascript:Boolean = true  ) : void
+		public function loadURL( url : String, initJavascript : Boolean = true ) : void
 		{
 			_nextLoadInitJavascript = initJavascript;
 			_view.loadURL( url );
@@ -408,7 +416,6 @@ package es.xperiments.media
 			_view.stage = mode ? null : ( visible ? null : stage );
 			super.visible = mode;
 		}
-
 
 		/**
 		 * Makes a call to a javascript function
