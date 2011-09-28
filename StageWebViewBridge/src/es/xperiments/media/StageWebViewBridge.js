@@ -24,6 +24,9 @@ limitations under the License.
 		var cached_extensions = [];
 		var fileRegex;
 		var sendingProtocol = "";
+		var currentHandler;
+		var onReadyHandlers = [];
+		
 		var doCall = function( jsonArgs )
 		{
 			setTimeout(function() { deferredDoCall(jsonArgs); },0 );
@@ -113,12 +116,39 @@ limitations under the License.
 			sourcePath = aSourcePath;
 			rootPath = aRootPath;
 			docsPath = aDocsPath;
+			onReady( );
 		};
+		var ready = function( handler )
+		{
+			onReadyHandlers.push( handler );
+		}
+		
+		var onReady = function( )
+		{
+			document.addEventListener('fakeEvents', function()
+			{
+				currentHandler();
+			}, false );
+	
+			
+			for (var i=0; i<onReadyHandlers.length; i++)
+			{
+				currentHandler = onReadyHandlers[ i ];
+				dispatchFakeEvent();
+			}
+		}
+		var dispatchFakeEvent = function()
+		{
+			var fakeEvent = document.createEvent("UIEvents");
+			fakeEvent.initEvent("fakeEvents", false,false );
+			document.dispatchEvent(fakeEvent);
+		}
 		return {
 			doCall: doCall,
             call: call,
 			getFilePath:getFilePath,
-			setRootPath:setRootPath
+			setRootPath:setRootPath,
+			ready:ready
 		};
 	})();
 })(window);

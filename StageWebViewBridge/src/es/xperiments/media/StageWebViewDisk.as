@@ -164,7 +164,12 @@ package es.xperiments.media
 		public static function setExtensionsToProcess( extensions : Array ) : void
 		{
 			_cached_extensions = extensions;
-			_appFileIncludeRegexp = new RegExp("\(\?P<protocol>appfile:\/\)\(\?P<file>\[\\w\-\\\.\\\/%\]\+\(\?P<extension>"+extensions.join('\|')+"\)\)","gixsm");
+			var regExpExtensions:Array = new Array();
+			for (var i : int = 0; i < _cached_extensions.length; i++)
+			{
+					regExpExtensions[ i ] = '\\\.'+_cached_extensions[ i ];
+			}
+			_appFileIncludeRegexp = new RegExp("\(\?P<protocol>appfile:\/\)\(\?P<file>\[\\w\-\\\.\\\/%\]\+\(\?P<extension>"+regExpExtensions.join('\|')+"\)\)","gixsm");
 		}
 
 		/**
