@@ -384,11 +384,9 @@ package es.xperiments.media
 
 		override public function set visible( value : Boolean ) : void
 		{
-			if ( stage )
-			{
-				super.visible = value;
-				_view.stage = value ? ( _snapShotVisible ? null : stage ) : null;
-			}
+
+			super.visible = value;
+			_view.stage = value ? ( _snapShotVisible ? null : StageWebViewDisk.stage ) : null;
 		}
 
 		/**
@@ -396,14 +394,16 @@ package es.xperiments.media
 		 */
 		public function getSnapShot() : void
 		{
-			bitmapData = new BitmapData( _viewPort.width, _viewPort.height, false, 0x000000 );
-			_view.drawViewPortToBitmapData( bitmapData );
+
+			super.bitmapData = new BitmapData( _viewPort.width, _viewPort.height, false, 0xFF0000 );
+			_view.drawViewPortToBitmapData( super.bitmapData );
+			
 			var bridge : StageWebViewBridge = this;
 			addEventListener( Event.ENTER_FRAME, function( e : Event ) : void
 			{
 				e.currentTarget.removeEventListener( e.type, arguments.callee );
 				bridge.dispatchEvent( new StageWebViewBridgeEvent( StageWebViewBridgeEvent.ON_GET_SNAPSHOT ) );
-			}, false, 0, true );
+			});
 		}
 
 		/**
