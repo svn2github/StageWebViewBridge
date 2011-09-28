@@ -121,7 +121,7 @@ limitations under the License.
 		var ready = function( handler )
 		{
 			onReadyHandlers.push( handler );
-		}
+		};
 		
 		var onReady = function( )
 		{
@@ -136,13 +136,13 @@ limitations under the License.
 				currentHandler = onReadyHandlers[ i ];
 				dispatchFakeEvent();
 			}
-		}
+		};
 		var dispatchFakeEvent = function()
 		{
 			var fakeEvent = document.createEvent("UIEvents");
 			fakeEvent.initEvent("fakeEvents", false,false );
 			document.dispatchEvent(fakeEvent);
-		}
+		};
 		return {
 			doCall: doCall,
             call: call,
