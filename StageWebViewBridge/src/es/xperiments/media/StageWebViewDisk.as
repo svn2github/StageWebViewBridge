@@ -454,7 +454,15 @@ package es.xperiments.media
 			
 			//Search for files that AREN'T in the cached_extensions list
 			//Repaces the path with a path with file:// protocol
-			str = str.split('appfile:').join( _applicationSourcesDirectory );
+			
+			if( isDESKTOP && _debugMode )
+			{
+				str = str.split('appfile:').join( _appCacheFile.resolvePath(_document_root).url );
+			}
+			else
+			{
+				str = str.split('appfile:').join( _applicationSourcesDirectory );
+			}
 			return str;			
 		}
 
