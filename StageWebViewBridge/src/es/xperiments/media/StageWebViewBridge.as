@@ -20,7 +20,6 @@ package es.xperiments.media
 	import flash.display.DisplayObject;
 	import flash.display.DisplayObjectContainer;
 	import flash.display.Stage;
-	import flash.events.ErrorEvent;
 	import flash.events.Event;
 	import flash.events.FocusEvent;
 	import flash.events.LocationChangeEvent;
@@ -33,7 +32,7 @@ package es.xperiments.media
 	public class StageWebViewBridge extends Bitmap
 	{
 		private static const _zeroPoint : Point = new Point( 0, 0 );
-		private static var _translatedPoint : Point;
+		private var _translatedPoint : Point;
 		private var _bridge : StageWebViewBridgeExternal;
 		private var _view : StageWebView;
 		private var _viewPort : Rectangle;
@@ -41,7 +40,6 @@ package es.xperiments.media
 		private var _snapShotVisible : Boolean = false;
 		private var _getSnapShotCallBack : Function;
 		private var _autoVisibleUpdate : Boolean;
-		private var _nextLoadInitJavascript : Boolean;
 
 		/**
 		 * @param xpos Indicates the initial x pos
@@ -74,14 +72,9 @@ package es.xperiments.media
 			_bridge = new StageWebViewBridgeExternal( this );
 
 			// adds callback to get Root Ptah from JS
-			_bridge.addCallback( 'getRootPath', StageWebViewDisk.getRootPath );
+			_bridge.addCallback( 'getRootPath', getRootPath );
 
-			_view.addEventListener( Event.COMPLETE, onListener );
-			_view.addEventListener( ErrorEvent.ERROR, onListener );
-			_view.addEventListener( FocusEvent.FOCUS_IN, onListener );
-			_view.addEventListener( FocusEvent.FOCUS_OUT, onListener );
-			_view.addEventListener( LocationChangeEvent.LOCATION_CHANGE, onListener );
-			_view.addEventListener( LocationChangeEvent.LOCATION_CHANGING, onListener );
+			_view.addEventListener( LocationChangeEvent.LOCATION_CHANGING, onLocationChange );
 
 			x = xpos;
 			y = ypos;
@@ -89,6 +82,15 @@ package es.xperiments.media
 			cacheAsBitmap = true;
 			cacheAsBitmapMatrix = transform.concatenatedMatrix;
 			addEventListener( Event.ADDED_TO_STAGE, onAdded );
+		}
+
+		/**
+		 * Called from Javascript on window.onload
+		 * Sets fileDirectories paths and cachedExtensions to use in the JScode.
+		 */
+		private function getRootPath() : void
+		{
+			call( 'StageWebViewBridge.setRootPath', null, StageWebViewDisk.getRootPath(), StageWebViewDisk.getSourceRootPath(), File.documentsDirectory.url, StageWebViewDisk.getCachedExtensions() );
 		}
 
 		/**
@@ -108,10 +110,7 @@ package es.xperiments.media
 				addEventListener( Event.EXIT_FRAME, checkVisibleState );
 				addEventListener( Event.REMOVED_FROM_STAGE, onRemoved );
 			}
-			else
-			{
-				removeEventListener( Event.ADDED_TO_STAGE, onAdded );
-			}
+			removeEventListener( Event.ADDED_TO_STAGE, onAdded );
 		}
 
 		/**
@@ -134,16 +133,12 @@ package es.xperiments.media
 		}
 
 		/**
-		 * Generic StageWebView Listener. Controls LOCATION_CHANGING events for catching incomming data.
+		 * Controls LOCATION_CHANGING events for catching incomming data.
 		 */
-		private function onListener( e : Event ) : void
+		private function onLocationChange( e : Event ) : void
 		{
 			switch( true )
 			{
-				case e.type == Event.COMPLETE:
-					if ( _nextLoadInitJavascript ) _bridge.initJavascriptCommunication();
-					dispatchEvent( e );
-					break;
 				case e.type == LocationChangeEvent.LOCATION_CHANGING:
 					var currLocation : String = unescape( (e as LocationChangeEvent).location );
 					switch( true )
@@ -155,6 +150,7 @@ package es.xperiments.media
 							break;
 						// load local pages
 						case currLocation.indexOf( 'applink:' ) != -1:
+						case currLocation.indexOf( 'doclink:' ) != -1:
 							e.preventDefault();
 							loadLocalURL( currLocation );
 							break;
@@ -174,9 +170,8 @@ package es.xperiments.media
 		{
 			switch( type )
 			{
+				case Event.COMPLETE:
 				case LocationChangeEvent.LOCATION_CHANGING:
-					_view.addEventListener( type, listener, useCapture, priority, useWeakReference );
-					break;
 				case FocusEvent.FOCUS_IN:
 				case FocusEvent.FOCUS_OUT:
 					_view.addEventListener( type, listener, useCapture, priority, useWeakReference );
@@ -195,13 +190,12 @@ package es.xperiments.media
 		{
 			switch( type )
 			{
+				case Event.COMPLETE:
 				case LocationChangeEvent.LOCATION_CHANGING:
-					_view.removeEventListener( type, listener, useCapture );
-					break;
 				case FocusEvent.FOCUS_IN:
 				case FocusEvent.FOCUS_OUT:
 					_view.removeEventListener( type, listener, useCapture );
-					break;					
+					break;
 				default:
 					super.removeEventListener( type, listener, useCapture );
 					break;
@@ -255,12 +249,7 @@ package es.xperiments.media
 			if ( hasEventListener( Event.REMOVED_FROM_STAGE ) ) removeEventListener( Event.REMOVED_FROM_STAGE, onRemoved );
 			if ( hasEventListener( Event.ADDED_TO_STAGE ) ) removeEventListener( Event.ADDED_TO_STAGE, onAdded );
 
-			_view.removeEventListener( Event.COMPLETE, onListener );
-			_view.removeEventListener( ErrorEvent.ERROR, onListener );
-			_view.removeEventListener( FocusEvent.FOCUS_IN, onListener );
-			_view.removeEventListener( FocusEvent.FOCUS_OUT, onListener );
-			_view.removeEventListener( LocationChangeEvent.LOCATION_CHANGE, onListener );
-			_view.removeEventListener( LocationChangeEvent.LOCATION_CHANGING, onListener );
+			_view.removeEventListener( LocationChangeEvent.LOCATION_CHANGING, onLocationChange );
 			_view.dispose();
 			if ( bitmapData != null ) bitmapData.dispose();
 			_view = null;
@@ -294,9 +283,8 @@ package es.xperiments.media
 		 * @param initJavascript Enables / Disables Javascript init at page load complete.				
 		 * 				Usage: stageWebViewBridge.loadLocalURL('applink:/index.html');
 		 */
-		public function loadLocalURL( url : String, initJavascript : Boolean = true ) : void
+		public function loadLocalURL( url : String ) : void
 		{
-			_nextLoadInitJavascript = initJavascript;
 			_tmpFile.nativePath = StageWebViewDisk.getFilePath( url );
 			_view.loadURL( _tmpFile.url );
 		}
@@ -305,9 +293,8 @@ package es.xperiments.media
 		 * @param url The url to load
 		 * @param initJavascript Enables / Disables Javascript init at page load complete.
 		 */
-		public function loadURL( url : String, initJavascript : Boolean = true ) : void
+		public function loadURL( url : String ) : void
 		{
-			_nextLoadInitJavascript = initJavascript;
 			_view.loadURL( url );
 		}
 
@@ -384,7 +371,6 @@ package es.xperiments.media
 
 		override public function set visible( value : Boolean ) : void
 		{
-
 			super.visible = value;
 			_view.stage = value ? ( _snapShotVisible ? null : StageWebViewDisk.stage ) : null;
 		}
@@ -394,16 +380,15 @@ package es.xperiments.media
 		 */
 		public function getSnapShot() : void
 		{
-
 			super.bitmapData = new BitmapData( _viewPort.width, _viewPort.height, false, 0xFF0000 );
 			_view.drawViewPortToBitmapData( super.bitmapData );
-			
+
 			var bridge : StageWebViewBridge = this;
 			addEventListener( Event.ENTER_FRAME, function( e : Event ) : void
 			{
 				e.currentTarget.removeEventListener( e.type, arguments.callee );
 				bridge.dispatchEvent( new StageWebViewBridgeEvent( StageWebViewBridgeEvent.ON_GET_SNAPSHOT ) );
-			});
+			} );
 		}
 
 		/**

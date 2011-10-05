@@ -15,6 +15,8 @@ limitations under the License.
  */
 package es.xperiments.media
 {
+	import flash.desktop.NativeApplication;
+	import flash.system.ApplicationDomain;
 	import flash.utils.ByteArray;
 	import flash.display.Stage;
 	import flash.events.Event;
@@ -31,21 +33,13 @@ package es.xperiments.media
 	{
 		public static const isIPHONE : Boolean = Capabilities.os.indexOf( 'iPhone' ) != -1 ? true : false;
 		public static const isANDROID : Boolean = Capabilities.version.indexOf( 'AND' ) != -1 ? true : false;
-		public static const isMOBILE : Boolean = ( isIPHONE || isANDROID );
-		public static const isLINUX : Boolean = Capabilities.version.indexOf( 'LNX' ) != -1 ? true : false;
-		public static const isMAC : Boolean = Capabilities.version.indexOf( 'MAC' ) != -1 ? true : false;
-		public static const isWINDOWS : Boolean = Capabilities.version.indexOf( 'WIN' ) != -1 ? true : false;
-		public static const isDESKTOP : Boolean = ( (isLINUX && !isANDROID ) || isWINDOWS || isMAC || Capabilities.isDebugger );
+		public static const isDESKTOP : Boolean = ( !isIPHONE && !isANDROID );
 
-		public static const SENDING_PROTOCOL:String = StageWebViewDisk.isANDROID ? "tuoba:":"about:";
-
-		public static const PROTOCOL_APP_LINK:String = "applink:/";
-		public static const PROTOCOL_DOC_LINK:String = "doclink:/";
-
+		public static const SENDING_PROTOCOL : String = isIPHONE ?  "about:":"tuoba:";
+		public static const PROTOCOL_APP_LINK : String = "applink:/";
+		public static const PROTOCOL_DOC_LINK : String = "doclink:/";
+		
 		public static var JSCODE : String;
-
-
-
 		private static var _applicationCacheDirectory : String;
 		private static var _applicationRootPath : String;
 		private static var _debugMode : Boolean = false;
@@ -60,13 +54,14 @@ package es.xperiments.media
 		private static var _copyToFile : File = new File();
 		private static var _tempFileCounter : uint = 0;
 		private static var _disp : EventDispatcher;
-		private static var _appFileIncludeRegexp:RegExp;
+		private static var _appFileIncludeRegexp : RegExp;
 		private static var _stage : Stage;
 		private static var _applicationSourcesDirectory : String;
-		private static const _headRegexp:RegExp = new RegExp( '<head>', 'g' );
-		
+		private static const _headRegexp : RegExp = new RegExp( '<head>', 'g' );
+
+		// Embed the javascript file used in injection
 		[Embed(source='StageWebViewBridge.js', mimeType="application/octet-stream")]
-		private static const EMBEDJS:Class; // Embed the javascript file used in injection or remote
+		private static const EMBEDJS : Class;
 
 		/**
 		 * Main init function
@@ -83,12 +78,12 @@ package es.xperiments.media
 		 *	StageWebViewDisk.initialize( stage )<br>
 		 * 
 		 */
-		public static function initialize( stage:Stage ) : void
+		public static function initialize( stage : Stage ) : void
 		{
 			initJSCODE();
-			if( stage == null ) 
+			if ( stage == null )
 			{
-				throw new Error("StageWebViewDisk.initialize( stage ) :: You mus provide a valid stage instance");
+				throw new Error( "StageWebViewDisk.initialize( stage ) :: You mus provide a valid stage instance" );
 			}
 			_stage = stage;
 			setExtensionsToProcess( _cached_extensions );
@@ -99,38 +94,54 @@ package es.xperiments.media
 					_appCacheFile = File.applicationStorageDirectory;
 					_applicationCacheDirectory = new File( _appCacheFile.nativePath ).url;
 					_applicationRootPath = _applicationCacheDirectory + '/' + getWorkingDir();
-					_applicationSourcesDirectory =_applicationRootPath;
-					
+					_applicationSourcesDirectory = _applicationRootPath;
 					break;
 				// IOS
 				case isIPHONE :
 					_appCacheFile = File.applicationStorageDirectory;
 					_applicationCacheDirectory = new File( _appCacheFile.nativePath ).url;
-					_applicationRootPath = _applicationCacheDirectory + '/' + getWorkingDir(); 
-					_applicationSourcesDirectory = 	new File( new File( "app:/"+_document_root ).nativePath ).url;	
-								
+					_applicationRootPath = _applicationCacheDirectory + '/' + getWorkingDir();
+					_applicationSourcesDirectory = new File( new File( "app:/" + _document_root ).nativePath ).url;
 					break;
 				// DESKTOP OSX
 				case isDESKTOP:
 					_appCacheFile = new File( new File( "app:/" ).nativePath );
 					_applicationCacheDirectory = _appCacheFile.url;
-					_applicationRootPath = _applicationCacheDirectory + '/' + getWorkingDir(); 
+					_applicationRootPath = _applicationCacheDirectory + '/' + getWorkingDir();
 					_applicationSourcesDirectory = _applicationRootPath;
 					break;
 			}
-			
 
 
+			// Used to determine if a previous version of the app was installed, to force diskCache process
+			var forceBuildUpdate:Boolean = false;
 			// Determine if is ther first time that the application runs
 			_firstRun = new File( _applicationCacheDirectory ).resolvePath( 'swvb.init' ).exists ? false : true;
-
-			// If first run or in DebugMode run the "diskCaching"
-			if ( _firstRun || _debugMode )
+			if ( !_firstRun )
+			{
+				// get saved app version
+				var appXML : XML = NativeApplication.nativeApplication.applicationDescriptor;
+				var ns : Namespace = appXML.namespace();
+				var descriptorVer:String = appXML.ns::versionNumber;
+				
+				_fileStream = new FileStream();
+				_fileStream.open( new File( _applicationCacheDirectory ).resolvePath( 'swvb.init' ), FileMode.READ );
+				var currentVersion:String = _fileStream.readUTF( );
+				_fileStream.close();
+				
+				if( currentVersion != descriptorVer )
+				{
+					forceBuildUpdate = true;
+				}
+			}
+			// If first run or in DebugMode or we have update the build number then run the "diskCaching"
+			if ( _firstRun || (_debugMode && isDESKTOP ) || forceBuildUpdate )
 			{
 				processCache();
 			}
 			else
 			{
+				dispatchEvent( new StageWebviewDiskEvent( StageWebviewDiskEvent.START_DISK_PARSING ) );
 				dispatchEvent( new StageWebviewDiskEvent( StageWebviewDiskEvent.END_DISK_PARSING ) );
 			}
 
@@ -138,14 +149,17 @@ package es.xperiments.media
 			deleteTempFolder();
 		}
 
+		/**
+		 * Get the JS code from the Embed JS file, and remove carriage returns
+		 */
 		private static function initJSCODE() : void
 		{
-			var file:ByteArray = new EMBEDJS();
-			var str:String = file.readUTFBytes( file.length );
-			
+			var file : ByteArray = new EMBEDJS();
+			var str : String = file.readUTFBytes( file.length );
+
 			JSCODE = str.toString()
 			.replace( new RegExp( "\\n", "g" ), "" )
-			.replace( new RegExp( "\\t", "g" ), "" );			
+			.replace( new RegExp( "\\t", "g" ), "" );
 		}
 
 		/**
@@ -164,12 +178,12 @@ package es.xperiments.media
 		public static function setExtensionsToProcess( extensions : Array ) : void
 		{
 			_cached_extensions = extensions;
-			var regExpExtensions:Array = new Array();
+			var regExpExtensions : Array = new Array();
 			for (var i : int = 0; i < _cached_extensions.length; i++)
 			{
-					regExpExtensions[ i ] = '\\\.'+_cached_extensions[ i ];
+				regExpExtensions[ i ] = '\\\.' + _cached_extensions[ i ];
 			}
-			_appFileIncludeRegexp = new RegExp("\(\?P<protocol>appfile:\/\)\(\?P<file>\[\\w\-\\\.\\\/%\]\+\(\?P<extension>"+regExpExtensions.join('\|')+"\)\)","gixsm");
+			_appFileIncludeRegexp = new RegExp( "\(\?P<protocol>appfile:\/\)\(\?P<file>\[\\w\-\\\.\\\/%\]\+\(\?P<extension>" + regExpExtensions.join( '\|' ) + "\)\)", "gixsm" );
 		}
 
 		/**
@@ -213,24 +227,22 @@ package es.xperiments.media
 		 */
 		public static function getFilePath( url : String ) : String
 		{
-			var fileName:String = "";
+			var fileName : String = "";
 			switch( true )
 			{
-				case url.indexOf(PROTOCOL_APP_LINK) !=-1:
+				case url.indexOf( PROTOCOL_APP_LINK ) != -1:
 					fileName = url.split( PROTOCOL_APP_LINK )[1];
 					return _appCacheFile.resolvePath( getWorkingDir() + '/' + fileName ).nativePath;
-				break;
-				case url.indexOf(PROTOCOL_DOC_LINK) !=-1:
+					break;
+				case url.indexOf( PROTOCOL_DOC_LINK ) != -1:
 					fileName = url.split( PROTOCOL_DOC_LINK )[1];
 					return File.documentsDirectory.resolvePath( fileName ).nativePath;
-				break;
+					break;
 				default:
-					throw new Error("StageWebViewDisk.getFilePath( url ) :: You mus provide a valid protocol applink:/ or doclink:/");	
-				break;	
+					throw new Error( "StageWebViewDisk.getFilePath( url ) :: You mus provide a valid protocol applink:/ or doclink:/" );
+					break;
 			}
 		}
-
-
 
 		/* STATIC EVENT DISPATCHER */
 		public static function addEventListener( p_type : String, p_listener : Function, p_useCapture : Boolean = false, p_priority : int = 0, p_useWeakReference : Boolean = false ) : void
@@ -260,13 +272,10 @@ package es.xperiments.media
 			_disp.dispatchEvent( p_event );
 		}
 
-
-
-
 		/**
 		 * Returns the Main path to the www root filesystem
 		 */
-		public static function getRootPath( ) : String
+		public static function getRootPath() : String
 		{
 			return _applicationRootPath;
 		}
@@ -279,7 +288,6 @@ package es.xperiments.media
 			return _applicationSourcesDirectory;
 		}
 
-		
 		/**
 		 * returns Array of current cachedExtensions
 		 */
@@ -288,9 +296,8 @@ package es.xperiments.media
 			return _cached_extensions;
 		}
 
-
 		/**
-		 * Determines the actual working dir based on debugMode and plattform
+		 * Determines the actual working cache dir based on debugMode and plattform
 		 */
 		private static function getWorkingDir() : String
 		{
@@ -304,7 +311,7 @@ package es.xperiments.media
 					return _document_source;
 					break;
 			}
-			return "";
+			return null;
 		}
 
 		/**
@@ -328,7 +335,6 @@ package es.xperiments.media
 			dispatchEvent( new StageWebviewDiskEvent( StageWebviewDiskEvent.START_DISK_PARSING ) );
 			var fileList : Vector.<File> = new Vector.<File>();
 			var ext : String;
-
 
 			getFilesRecursive( fileList, 'app:/' + _document_root );
 
@@ -358,14 +364,18 @@ package es.xperiments.media
 							break;
 						case isIPHONE:
 							// Do nothing as this files are "resources" and we can reference it from its original path
-							break;	
+							break;
 					}
 				}
 			}
+			
+			var appXML : XML = NativeApplication.nativeApplication.applicationDescriptor;
+			var ns : Namespace = appXML.namespace();
+
 			var firstRunFile : File = new File( _applicationCacheDirectory ).resolvePath( 'swvb.init' );
 			_fileStream = new FileStream();
 			_fileStream.open( firstRunFile, FileMode.WRITE );
-			_fileStream.writeUTF( "init" );
+			_fileStream.writeUTF( appXML.ns::versionNumber );
 			_fileStream.close();
 			firstRunFile = null;
 			_firstRun = false;
@@ -408,7 +418,7 @@ package es.xperiments.media
 		private static function getFilesRecursive( fileList : Vector.<File>, path : String = "" ) : void
 		{
 			var currentFolder : File = new File( path );
-			if( !currentFolder.exists ) return;
+			if ( !currentFolder.exists ) return;
 			var files : Array = currentFolder.getDirectoryListing();
 			for (var f : uint = 0; f < files.length; f++)
 			{
@@ -436,36 +446,34 @@ package es.xperiments.media
 		{
 			return _stage;
 		}
-		
+
 		/**
 		 * Parses the provided source searching files that contains the
 		 * appfile:/ protocol then changes the path according to the extension of the file.
 		 */
-		private static function parseAppFile( str:String ):String
+		private static function parseAppFile( str : String ) : String
 		{
 			// Search for files that ARE in the cached_extensions list
 			// Repaces the path with a path with file:// protocol
-			var result:Object = _appFileIncludeRegexp.exec(str);
-			while( result != null )
+			var result : Object = _appFileIncludeRegexp.exec( str );
+			while ( result != null )
 			{
-				str = str.replace( _appFileIncludeRegexp, _applicationRootPath+"/$2" ) ;
-				result = _appFileIncludeRegexp.exec(str);
+				str = str.replace( _appFileIncludeRegexp, _applicationRootPath + "/$2" ) ;
+				result = _appFileIncludeRegexp.exec( str );
 			}
-			
-			//Search for files that AREN'T in the cached_extensions list
-			//Repaces the path with a path with file:// protocol
-			
-			if( isDESKTOP && _debugMode )
+
+			// Search for files that AREN'T in the cached_extensions list
+			// Repaces the path with a path with file:// protocol
+
+			if ( isDESKTOP && _debugMode )
 			{
-				str = str.split('appfile:').join( _appCacheFile.resolvePath(_document_root).url );
+				str = str.split( 'appfile:' ).join( _appCacheFile.resolvePath( _document_root ).url );
 			}
 			else
 			{
-				str = str.split('appfile:').join( _applicationSourcesDirectory );
+				str = str.split( 'appfile:' ).join( _applicationSourcesDirectory );
 			}
-			return str;			
+			return str;
 		}
-
-
 	}
 }

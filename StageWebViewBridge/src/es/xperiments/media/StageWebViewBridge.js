@@ -1,18 +1,3 @@
-/*
-Copyright 2011 Pedro Casaubon
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
- */
 (function(window)
 {
 	window.StageWebViewBridge = (function()
@@ -23,10 +8,16 @@ limitations under the License.
 		var sourcePath = "";
 		var cached_extensions = [];
 		var fileRegex;
-		var sendingProtocol = "";
 		var currentHandler;
 		var onReadyHandlers = [];
-		
+		var ua = navigator.userAgent;
+		var checker =
+		{
+		  iphone: ua.match(/(iPhone|iPod|iPad)/) === null ? false:true,
+		  android: ua.match(/Android/) === null ? false: navigator.platform.match(/Linux/) == null ? false:true
+		};		
+
+		var sendingProtocol = checker.iphone ? 'about:':'tuoba:';		
 		var doCall = function( jsonArgs )
 		{
 			setTimeout(function() { deferredDoCall(jsonArgs); },0 );
@@ -108,15 +99,15 @@ limitations under the License.
 			};			
 			
 		};
-		var setRootPath = function( aRootPath, aSourcePath, aDocsPath, aCachedExtensions, asendingProtocol )
+		var setRootPath = function( aRootPath, aSourcePath, aDocsPath, aCachedExtensions )
 		{
-			sendingProtocol = asendingProtocol;
+
 			cached_extensions = aCachedExtensions;
 			fileRegex =new RegExp(( "\(jsfile:\/\)\(\[\\w\-\\\.\\\/%\]\+\("+cached_extensions.join('\|')+"\)\)" ),"gixsm");
 			sourcePath = aSourcePath;
 			rootPath = aRootPath;
 			docsPath = aDocsPath;
-			onReady( );
+
 		};
 		var ready = function( handler )
 		{
@@ -125,6 +116,8 @@ limitations under the License.
 		
 		var onReady = function( )
 		{
+			/*document.removeEventListener( "load", onReady, false );*/
+			call('getRootPath');
 			document.addEventListener('fakeEvents', function()
 			{
 				currentHandler();
@@ -143,6 +136,9 @@ limitations under the License.
 			fakeEvent.initEvent("fakeEvents", false,false );
 			document.dispatchEvent(fakeEvent);
 		};
+		
+		window.addEventListener( 'load', onReady, false );
+		
 		return {
 			doCall: doCall,
             call: call,
