@@ -15,7 +15,10 @@ limitations under the License.
 */
 package es.xperiments.media
 {
-	import by.blooddy.crypto.serialization.JSON;
+
+	// Replaced with Native JSON in AIR3.0
+	/* import by.blooddy.crypto.serialization.JSON; */
+	
 
 	import es.xperiments.utils.Base64;
 
@@ -54,7 +57,7 @@ package es.xperiments.media
 				addCallback('[SWVMethod]'+functionName, callback );
 				_serializeObject['callBack'] = '[SWVMethod]'+functionName;
 			}	
-			_activeStage.loadURL("javascript:StageWebViewBridge.doCall('"+Base64.encodeString( JSON.encode( _serializeObject ) ) +"')");
+			_activeStage.loadURL("javascript:StageWebViewBridge.doCall('"+Base64.encodeString( JSON.stringify( _serializeObject ) ) +"')");
 		}
 
 		/**
@@ -75,7 +78,7 @@ package es.xperiments.media
 
 		internal function parseCallBack( base64String:String ):void
 		{
-			_serializeObject = JSON.decode( Base64.decode( base64String ).toString() );
+			_serializeObject = JSON.parse( Base64.decode( base64String ).toString() );
 			_callBackFunction = _callBacks[ _serializeObject['method'] ];
 			var returnValue:* = null;
 
