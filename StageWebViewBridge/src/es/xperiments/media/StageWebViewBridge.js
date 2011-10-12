@@ -3,21 +3,24 @@
 	window.StageWebViewBridge = (function()
 	{         
 		var callBacks = [];
+		var onReadyHandlers = [];
+		var cached_extensions = [];
+		var DOMContentLoadedCallBack =function(){};
+		var devicereadyCallBack = function(){};
 		var rootPath = "";
 		var docsPath = "";
 		var sourcePath = "";
-		var cached_extensions = [];
 		var fileRegex;
 		var currentHandler;
-		var onReadyHandlers = [];
 		var ua = navigator.userAgent;
+		var pathsReady = false;
 		var checker =
 		{
 		  iphone: ua.match(/(iPhone|iPod|iPad)/) === null ? false:true,
 		  android: ua.match(/Android/) === null ? false: navigator.platform.match(/Linux/) == null ? false:true
 		};		
-
 		var sendingProtocol = checker.iphone ? 'about:':'tuoba:';		
+
 		var doCall = function( jsonArgs )
 		{
 			setTimeout(function() { deferredDoCall(jsonArgs); },0 );
@@ -56,7 +59,8 @@
 			{	
 				call( _serializeObject.callBack, null, returnValue );  		
 			};							
-		}; 
+		};
+		
 		var call = function( )
 		{
 			var argumentsArray = [];
@@ -76,39 +80,46 @@
 			if( _serializeObject.callBack !=undefined ) { addCallback('[SWVMethod]'+arguments[ 0 ], arguments[ 1 ] ); };
 			window.location.href=sendingProtocol+'[SWVData]'+btoa( JSON.stringify( _serializeObject ) );
 		};
+		
 		var addCallback = function( name, fn )
 		{
 			callBacks[ name ] = fn;
-		};	
+		};
+		
 		var getFilePath = function( fileName )
 		{
-			if( fileName.indexOf('jsfile:') !=-1 )
+			if( !pathsReady )
+			{
+				throw "StageWebViewBridge.getFilePath('"+fileName+"').Paths still not set. Listen to document.deviceready event before access this method.";
+			}
+			else
 			{	
-				if( fileRegex.exec(fileName) != null )
-				{
-					return rootPath+'/'+fileName.split('jsfile:/')[1];
-				}
-				else
-				{
-					return sourcePath+'/'+fileName.split('jsfile:/')[1];
+				if( fileName.indexOf('jsfile:') !=-1 )
+				{	
+					if( fileRegex.exec(fileName) != null )
+					{
+						return rootPath+'/'+fileName.split('jsfile:/')[1];
+					}
+					else
+					{
+						return sourcePath+'/'+fileName.split('jsfile:/')[1];
+					};
 				};
-			};
-			if( fileName.indexOf('jsdocfile:') !=-1 )
-			{	
-				return docsPath+'/'+fileName.split('jsdocfile:/')[1];
-			};			
-			
+				if( fileName.indexOf('jsdocfile:') !=-1 )
+				{	
+					return docsPath+'/'+fileName.split('jsdocfile:/')[1];
+				};
+			}
 		};
-		var setRootPath = function( aRootPath, aSourcePath, aDocsPath, aCachedExtensions )
+		/* fakeEventDispatcher */
+		var dispatchFakeEvent = function( name )
 		{
-
-			cached_extensions = aCachedExtensions;
-			fileRegex =new RegExp(( "\(jsfile:\/\)\(\[\\w\-\\\.\\\/%\]\+\("+cached_extensions.join('\|')+"\)\)" ),"gixsm");
-			sourcePath = aSourcePath;
-			rootPath = aRootPath;
-			docsPath = aDocsPath;
-
-		};
+			var fakeEvent = document.createEvent("UIEvents");
+			fakeEvent.initEvent( name , false,false );
+			document.dispatchEvent(fakeEvent);
+		};		
+		
+		/*[Event("ready")]*/
 		var ready = function( handler )
 		{
 			onReadyHandlers.push( handler );
@@ -116,35 +127,67 @@
 		
 		var onReady = function( )
 		{
-			/*document.removeEventListener( "load", onReady, false );*/
-			call('getRootPath');
-			document.addEventListener('fakeEvents', function()
+			document.addEventListener('SWVBReady', function()
 			{
 				currentHandler();
 			}, false );
 	
-			
 			for (var i=0; i<onReadyHandlers.length; i++)
 			{
 				currentHandler = onReadyHandlers[ i ];
-				dispatchFakeEvent();
-			}
+				dispatchFakeEvent("SWVBReady");
+			};
+		
 		};
-		var dispatchFakeEvent = function()
+		
+		var getPathsData = function()
 		{
-			var fakeEvent = document.createEvent("UIEvents");
-			fakeEvent.initEvent("fakeEvents", false,false );
-			document.dispatchEvent(fakeEvent);
+			call('getFilePaths', onGetFilePaths );
+		};
+
+		var onGetFilePaths = function( data )
+		{
+			sourcePath = data.sourcePath;
+			rootPath = data.rootPath;
+			docsPath = data.docsPath;
+			cached_extensions =  data.extensions ;
+			fileRegex =new RegExp(( "\(jsfile:\/\)\(\[\\w\-\\\.\\\/%\]\+\("+cached_extensions.join('\|')+"\)\)" ),"gixsm");
+			pathsReady = true;
+			onReady();
+			devicereadyCallBack();
 		};
 		
-		window.addEventListener( 'load', onReady, false );
+		/* Assign a callback function that executes the on deviceready */
+		var deviceready = function( fn )
+		{
+			devicereadyCallBack = fn;
+		};
 		
+		/* Assign a callback function that returns an object to the DOMContentLoaded event */
+		var domLoaded = function( fn )
+		{
+			DOMContentLoadedCallBack = fn;
+		};
+		
+		/* Call AS3 to fire StageWebViewBridgeEvent.DOM_LOADED */
+		var callDOMContentLoaded = function()
+		{
+			var _serializeObject = {};
+				_serializeObject.method = 'onCallDOMContentLoaded';
+				_serializeObject.arguments = [DOMContentLoadedCallBack()];
+			document.title = sendingProtocol+'[SWVData]'+btoa( JSON.stringify( _serializeObject ) );			
+		};
+		
+		domLoaded( function() { return null });
+		window.addEventListener( 'load', getPathsData, false );
+		document.addEventListener('DOMContentLoaded', callDOMContentLoaded, false );
 		return {
 			doCall: doCall,
             call: call,
 			getFilePath:getFilePath,
-			setRootPath:setRootPath,
-			ready:ready
+			ready:ready,
+			deviceready:deviceready,
+			domLoaded:domLoaded
 		};
 	})();
 })(window);

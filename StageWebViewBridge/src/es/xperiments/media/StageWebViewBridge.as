@@ -72,7 +72,8 @@ package es.xperiments.media
 			_bridge = new StageWebViewBridgeExternal( this );
 
 			// adds callback to get Root Ptah from JS
-			_bridge.addCallback( 'getRootPath', getRootPath );
+			_bridge.addCallback( 'getFilePaths', getFilePaths );
+			_bridge.addCallback( 'onCallDOMContentLoaded', dispatchDOMContentLoaded );
 
 			_view.addEventListener( LocationChangeEvent.LOCATION_CHANGING, onLocationChange );
 
@@ -84,13 +85,23 @@ package es.xperiments.media
 			addEventListener( Event.ADDED_TO_STAGE, onAdded );
 		}
 
+		private function dispatchDOMContentLoaded( obj:Object = null ) : void
+		{
+			dispatchEvent( new StageWebViewBridgeEvent( StageWebViewBridgeEvent.DOM_LOADED ,obj ) );
+		}
+
 		/**
-		 * Called from Javascript on window.onload
+		 * Called from Javascript on document.DOMContentLoaded
 		 * Sets fileDirectories paths and cachedExtensions to use in the JScode.
 		 */
-		private function getRootPath() : void
+		private function getFilePaths() : Object
 		{
-			call( 'StageWebViewBridge.setRootPath', null, StageWebViewDisk.getRootPath(), StageWebViewDisk.getSourceRootPath(), File.documentsDirectory.url, StageWebViewDisk.getCachedExtensions() );
+			return{
+				rootPath:StageWebViewDisk.getRootPath(),
+				sourcePath:StageWebViewDisk.getSourceRootPath(),
+				docsPath:File.documentsDirectory.url,
+				extensions:StageWebViewDisk.getCachedExtensions()
+			};
 		}
 
 		/**
@@ -283,28 +294,66 @@ package es.xperiments.media
 		 * @param initJavascript Enables / Disables Javascript init at page load complete.				
 		 * 				Usage: stageWebViewBridge.loadLocalURL('applink:/index.html');
 		 */
-		public function loadLocalURL( url : String ) : void
+		public function loadLocalURL( url : String, checkDomLoaded:Boolean = false ) : void
 		{
 			_tmpFile.nativePath = StageWebViewDisk.getFilePath( url );
+			if( checkDomLoaded ) watchDomLoaded( true );
 			_view.loadURL( _tmpFile.url );
 		}
+		
+		
+		/**
+		 * Enables disables the DomLoaded Checking
+		 */
+		private function watchDomLoaded( mode:Boolean ):void
+		{
+			if( mode )
+			{
+				addEventListener(Event.ENTER_FRAME, checkDOMContentLoaded );
+			}
+			else
+			{
+				removeEventListener(Event.ENTER_FRAME, checkDOMContentLoaded );
+			}
+			
+		}
+
+		/**
+		 * Checks with an EnterFrame the presence of the DomLoaded callback from javascript
+		 */
+		private function checkDOMContentLoaded( event : Event ) : void
+		{
+			if( _view.title.indexOf( StageWebViewDisk.SENDING_PROTOCOL + '[SWVData]' ) != -1 )
+			{
+				watchDomLoaded( false );
+				_bridge.parseCallBack( _view.title.split( StageWebViewDisk.SENDING_PROTOCOL + '[SWVData]' )[1] );
+			}
+		}
+
 
 		/**
 		 * @param url The url to load
 		 * @param initJavascript Enables / Disables Javascript init at page load complete.
 		 */
-		public function loadURL( url : String ) : void
+		public function loadURL( url : String, checkDomLoaded:Boolean = false ) : void
 		{
+			if( checkDomLoaded ) watchDomLoaded( true );
 			_view.loadURL( url );
 		}
 
 		/**
 		 * Enhaced loadString
 		 * Loads a string and inject the javascript comunication code into it. 
+		 * @param text String to load
+		 * @para
 		 */
-		public function loadString( text : String, mimeType : String = "text/html" ) : void
+		public function loadString( text : String, mimeType : String = "text/html", checkDomLoaded:Boolean = false ) : void
 		{
-			text = text.replace( new RegExp( '<head>', 'g' ), '<head><script type="text/javascript">' + StageWebViewDisk.JSCODE + '</script>' );
+			if( mimeType == "text/html")
+			{
+				text = text.replace( new RegExp( '<head>', 'g' ), '<head><script type="text/javascript">' + StageWebViewDisk.JSCODE + '</script>' );
+				if( checkDomLoaded ) watchDomLoaded( true );
+			}
 			_view.loadString( text, mimeType );
 		}
 
@@ -313,8 +362,9 @@ package es.xperiments.media
 		 * This way we can access local files with the appfile:/ protocol
 		 * @params String content
 		 */
-		public function loadLocalString( content : String ) : void
+		public function loadLocalString( content : String, checkDomLoaded:Boolean = false  ) : void
 		{
+			if( checkDomLoaded ) watchDomLoaded( true );
 			_view.loadURL( new File( StageWebViewDisk.createTempFile( content ).nativePath ).url );
 		}
 
