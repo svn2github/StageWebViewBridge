@@ -25,6 +25,7 @@ package es.xperiments.media
 		
 		public static const ON_GET_SNAPSHOT : String = "ON_GET_SNAPSHOT";
 		public static const DOM_LOADED : String = "DOM_LOADED";
+		public static const DEVICE_READY : String = "DEVICE_READY";
 		public var domLoadedData:Object = null;
 		public function StageWebViewBridgeEvent( type : String, data:Object = null, bubbles : Boolean = false, cancelable : Boolean = false )
 		{

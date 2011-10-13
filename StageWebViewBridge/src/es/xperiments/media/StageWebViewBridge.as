@@ -73,6 +73,7 @@ package es.xperiments.media
 
 			// adds callback to get Root Ptah from JS
 			_bridge.addCallback( 'getFilePaths', getFilePaths );
+			_bridge.addCallback( 'deviceReady', deviceReady );
 			_bridge.addCallback( 'onCallDOMContentLoaded', dispatchDOMContentLoaded );
 
 			_view.addEventListener( LocationChangeEvent.LOCATION_CHANGING, onLocationChange );
@@ -83,6 +84,11 @@ package es.xperiments.media
 			cacheAsBitmap = true;
 			cacheAsBitmapMatrix = transform.concatenatedMatrix;
 			addEventListener( Event.ADDED_TO_STAGE, onAdded );
+		}
+		
+		private function deviceReady():void
+		{
+			dispatchEvent(new StageWebViewBridgeEvent(StageWebViewBridgeEvent.DEVICE_READY));
 		}
 
 		private function dispatchDOMContentLoaded( obj:Object = null ) : void

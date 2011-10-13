@@ -155,6 +155,7 @@
 			pathsReady = true;
 			onReady();
 			devicereadyCallBack();
+			call('deviceReady');
 		};
 		
 		/* Assign a callback function that executes the on deviceready */
