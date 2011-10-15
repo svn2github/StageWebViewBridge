@@ -2,30 +2,63 @@
 {
 	window.StageWebViewBridge = (function()
 	{         
+	/* PROPIERTIES */
+		
+		/* Stores callBack functions */
 		var callBacks = [];
+		
+		/* Stores StageWebViewBridge.ready() functions */
 		var onReadyHandlers = [];
+		
+		/* Stores the extensions parsed with the cache System */
 		var cached_extensions = [];
-		var DOMContentLoadedCallBack =function(){};
+		
+		/* Stores the default function called on DOMContentLoaded */ 
+		var DOMContentLoadedCallBack =function(){ return null };
+		
+		/* Stores the default function called on deviceReady */
 		var devicereadyCallBack = function(){};
+		
+		/* Stores the default root path of filesystem */
 		var rootPath = "";
+		
+		/* Stores the documentsDirectory path of filesystem */
 		var docsPath = "";
+		
+		/* Stores the default sourceFolder path of filesystem */
 		var sourcePath = "";
+		
+		/* Stores the regexp used to filter files by extension */
 		var fileRegex;
-		var currentHandler;
-		var ua = navigator.userAgent;
-		var pathsReady = false;
+		
+		/* Used by the .ready method to store temporally callback function called in fakeEvent Dispathch */
+		var currentReadyHandler;
+		
+		/* Used to determine OS */
 		var checker =
 		{
-		  iphone: ua.match(/(iPhone|iPod|iPad)/) === null ? false:true,
-		  android: ua.match(/Android/) === null ? false: navigator.platform.match(/Linux/) == null ? false:true
+		  iphone: navigator.userAgent.match(/(iPhone|iPod|iPad)/) === null ? false:true,
+		  android: navigator.userAgent.match(/Android/) === null ? false: navigator.platform.match(/Linux/) == null ? false:true
 		};		
+		
+		/* Used to determine if the paths has been initialized */
+		var pathsReady = false;
+		
+		/* Used to determine last call to AS3 time */
+		var lastCallTimer = 0;
+		
+		/* Used to determine the "protocol" to do the comm with AS3 */
 		var sendingProtocol = checker.iphone ? 'about:':'tuoba:';		
 
+	/* METHODS */	
+		
+		/* Used internally to parse call funcions from AS3 */
 		var doCall = function( jsonArgs )
 		{
 			setTimeout(function() { deferredDoCall(jsonArgs); },0 );
 		};
 	    
+		/* Used internally to parse call funcions from AS3 */
 		var deferredDoCall = function( jsonArgs )
 		{
 			var _serializeObject = JSON.parse( atob( jsonArgs ) );
@@ -61,6 +94,8 @@
 			};							
 		};
 		
+		/* Used to call an AS3 function. */
+		/* Usage: StageWebViewBridge.call( 'as3FunctionToCall', jsCallBack, ...restParams ) */
 		var call = function( )
 		{
 			var argumentsArray = [];
@@ -81,11 +116,13 @@
 			window.location.href=sendingProtocol+'[SWVData]'+btoa( JSON.stringify( _serializeObject ) );
 		};
 		
+		/* Used internally to store callback functions for call methods */
 		var addCallback = function( name, fn )
 		{
 			callBacks[ name ] = fn;
 		};
 		
+		/* Use it to get the path to a file from JS */
 		var getFilePath = function( fileName )
 		{
 			if( !pathsReady )
@@ -125,41 +162,40 @@
 			onReadyHandlers.push( handler );
 		};
 		
+		/* Fired on DOMContentLoaded */
 		var onReady = function( )
 		{
 			document.addEventListener('SWVBReady', function()
 			{
-				currentHandler();
+				currentReadyHandler();
 			}, false );
 	
 			for (var i=0; i<onReadyHandlers.length; i++)
 			{
-				currentHandler = onReadyHandlers[ i ];
+				currentReadyHandler = onReadyHandlers[ i ];
 				dispatchFakeEvent("SWVBReady");
 			};
 		
 		};
 		
-		var getPathsData = function()
-		{
-			call('getFilePaths', onGetFilePaths );
-		};
-
+		/* Called from AS3 on loadComplete. */
 		var onGetFilePaths = function( data )
-		{
+		{          
+			document.title = new Date().getTime();
 			sourcePath = data.sourcePath;
 			rootPath = data.rootPath;
 			docsPath = data.docsPath;
 			cached_extensions =  data.extensions ;
 			fileRegex =new RegExp(( "\(jsfile:\/\)\(\[\\w\-\\\.\\\/%\]\+\("+cached_extensions.join('\|')+"\)\)" ),"gixsm");
 			pathsReady = true;
-			onReady();
 			devicereadyCallBack();
-			call('deviceReady');
+			setTimeout( function(){ call('___onDeviceReady'); }, 1);
+			
+			
 		};
 		
 		/* Assign a callback function that executes the on deviceready */
-		var deviceready = function( fn )
+		var deviceReady = function( fn )
 		{
 			devicereadyCallBack = fn;
 		};
@@ -172,22 +208,34 @@
 		
 		/* Call AS3 to fire StageWebViewBridgeEvent.DOM_LOADED */
 		var callDOMContentLoaded = function()
-		{
-			var _serializeObject = {};
-				_serializeObject.method = 'onCallDOMContentLoaded';
-				_serializeObject.arguments = [DOMContentLoadedCallBack()];
-			document.title = sendingProtocol+'[SWVData]'+btoa( JSON.stringify( _serializeObject ) );			
+		{          
+			document.removeEventListener( 'DOMContentLoaded', callDOMContentLoaded, false );
+			lastCallTimer = new Date().getTime()+500;
+			setTimeout( function(){ call( '___onDomReady', null,  DOMContentLoadedCallBack() ); onReady(); }, 500); 			
 		};
 		
-		domLoaded( function() { return null });
-		window.addEventListener( 'load', getPathsData, false );
+		/* Fired on page load complete */
+		var loadComplete = function()
+		{
+			document.removeEventListener('load', loadComplete, false );
+			var lastCallTime = new Date().getTime()-lastCallTimer;
+			var delay = lastCallTime < 500 ? 500:1;
+			setTimeout( function(){ call('___getFilePaths', onGetFilePaths );}, delay);
+		};
+		
+		/* Listen for page load complete */
+		window.addEventListener( 'load', loadComplete, false );
+		
+		/* Listen for DOMContentLoaded */
 		document.addEventListener('DOMContentLoaded', callDOMContentLoaded, false );
+		
+		/* Return public methods */
 		return {
 			doCall: doCall,
             call: call,
 			getFilePath:getFilePath,
 			ready:ready,
-			deviceready:deviceready,
+			deviceReady:deviceReady,
 			domLoaded:domLoaded
 		};
 	})();

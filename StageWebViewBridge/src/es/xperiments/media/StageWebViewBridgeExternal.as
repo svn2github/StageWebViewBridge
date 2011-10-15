@@ -26,7 +26,7 @@ package es.xperiments.media
   
 	public class StageWebViewBridgeExternal extends EventDispatcher
 	{
-		private var _activeStage:StageWebViewBridge;
+		private var _view:StageWebViewBridge;
 		private var _serializeObject:Object;
 		private var _callBacks:Array;
 		private var _callBackFunction:Function;
@@ -37,7 +37,7 @@ package es.xperiments.media
 		 */
 		public function StageWebViewBridgeExternal( stageWebView:StageWebViewBridge )
 		{
-			_activeStage = stageWebView;
+			_view = stageWebView;
 			_callBacks = new Array();
 		}
 
@@ -57,7 +57,7 @@ package es.xperiments.media
 				addCallback('[SWVMethod]'+functionName, callback );
 				_serializeObject['callBack'] = '[SWVMethod]'+functionName;
 			}	
-			_activeStage.loadURL("javascript:StageWebViewBridge.doCall('"+Base64.encodeString( JSON.stringify( _serializeObject ) ) +"')");
+			_view.loadURL("javascript:StageWebViewBridge.doCall('"+Base64.encodeString( JSON.stringify( _serializeObject ) ) +"')");
 		}
 
 		/**

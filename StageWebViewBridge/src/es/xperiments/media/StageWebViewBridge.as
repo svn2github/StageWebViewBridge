@@ -72,9 +72,9 @@ package es.xperiments.media
 			_bridge = new StageWebViewBridgeExternal( this );
 
 			// adds callback to get Root Ptah from JS
-			_bridge.addCallback( 'getFilePaths', getFilePaths );
-			_bridge.addCallback( 'deviceReady', deviceReady );
-			_bridge.addCallback( 'onCallDOMContentLoaded', dispatchDOMContentLoaded );
+			_bridge.addCallback( '___getFilePaths', getFilePaths );
+			_bridge.addCallback( '___onDeviceReady', onDeviceReady );
+			_bridge.addCallback( '___onDomReady', onDomReady );
 
 			_view.addEventListener( LocationChangeEvent.LOCATION_CHANGING, onLocationChange );
 
@@ -85,15 +85,22 @@ package es.xperiments.media
 			cacheAsBitmapMatrix = transform.concatenatedMatrix;
 			addEventListener( Event.ADDED_TO_STAGE, onAdded );
 		}
-		
-		private function deviceReady():void
+
+		/**
+		 * Called from JS when bidirectional connection is stablished and working
+		 */
+		private function onDeviceReady() : void
 		{
-			dispatchEvent(new StageWebViewBridgeEvent(StageWebViewBridgeEvent.DEVICE_READY));
+			dispatchEvent( new StageWebViewBridgeEvent( StageWebViewBridgeEvent.DEVICE_READY ) );
 		}
 
-		private function dispatchDOMContentLoaded( obj:Object = null ) : void
+		/**
+		 * Called from JS when DOMContentLoaded fires
+		 * @param obj. An Object received from JS
+		 */
+		private function onDomReady( obj : Object = null ) : void
 		{
-			dispatchEvent( new StageWebViewBridgeEvent( StageWebViewBridgeEvent.DOM_LOADED ,obj ) );
+			dispatchEvent( new StageWebViewBridgeEvent( StageWebViewBridgeEvent.DOM_LOADED, obj ) );
 		}
 
 		/**
@@ -102,12 +109,8 @@ package es.xperiments.media
 		 */
 		private function getFilePaths() : Object
 		{
-			return{
-				rootPath:StageWebViewDisk.getRootPath(),
-				sourcePath:StageWebViewDisk.getSourceRootPath(),
-				docsPath:File.documentsDirectory.url,
-				extensions:StageWebViewDisk.getCachedExtensions()
-			};
+			dispatchEvent( new Event( Event.COMPLETE ) );
+			return{ rootPath:StageWebViewDisk.getRootPath(), sourcePath:StageWebViewDisk.getSourceRootPath(), docsPath:File.documentsDirectory.url, extensions:StageWebViewDisk.getCachedExtensions() };
 		}
 
 		/**
@@ -146,7 +149,7 @@ package es.xperiments.media
 		 */
 		private function checkVisibleState( event : Event ) : void
 		{
-			visible = isVisible( this );
+			visible = visible && isVisible( this );
 		}
 
 		/**
@@ -189,6 +192,7 @@ package es.xperiments.media
 			{
 				case Event.COMPLETE:
 				case LocationChangeEvent.LOCATION_CHANGING:
+				case LocationChangeEvent.LOCATION_CHANGE:
 				case FocusEvent.FOCUS_IN:
 				case FocusEvent.FOCUS_OUT:
 					_view.addEventListener( type, listener, useCapture, priority, useWeakReference );
@@ -209,6 +213,7 @@ package es.xperiments.media
 			{
 				case Event.COMPLETE:
 				case LocationChangeEvent.LOCATION_CHANGING:
+				case LocationChangeEvent.LOCATION_CHANGE:
 				case FocusEvent.FOCUS_IN:
 				case FocusEvent.FOCUS_OUT:
 					_view.removeEventListener( type, listener, useCapture );
@@ -300,50 +305,17 @@ package es.xperiments.media
 		 * @param initJavascript Enables / Disables Javascript init at page load complete.				
 		 * 				Usage: stageWebViewBridge.loadLocalURL('applink:/index.html');
 		 */
-		public function loadLocalURL( url : String, checkDomLoaded:Boolean = false ) : void
+		public function loadLocalURL( url : String ) : void
 		{
 			_tmpFile.nativePath = StageWebViewDisk.getFilePath( url );
-			if( checkDomLoaded ) watchDomLoaded( true );
 			_view.loadURL( _tmpFile.url );
 		}
-		
-		
-		/**
-		 * Enables disables the DomLoaded Checking
-		 */
-		private function watchDomLoaded( mode:Boolean ):void
-		{
-			if( mode )
-			{
-				addEventListener(Event.ENTER_FRAME, checkDOMContentLoaded );
-			}
-			else
-			{
-				removeEventListener(Event.ENTER_FRAME, checkDOMContentLoaded );
-			}
-			
-		}
-
-		/**
-		 * Checks with an EnterFrame the presence of the DomLoaded callback from javascript
-		 */
-		private function checkDOMContentLoaded( event : Event ) : void
-		{
-			if( _view.title.indexOf( StageWebViewDisk.SENDING_PROTOCOL + '[SWVData]' ) != -1 )
-			{
-				watchDomLoaded( false );
-				_bridge.parseCallBack( _view.title.split( StageWebViewDisk.SENDING_PROTOCOL + '[SWVData]' )[1] );
-			}
-		}
-
 
 		/**
 		 * @param url The url to load
-		 * @param initJavascript Enables / Disables Javascript init at page load complete.
 		 */
-		public function loadURL( url : String, checkDomLoaded:Boolean = false ) : void
+		public function loadURL( url : String ) : void
 		{
-			if( checkDomLoaded ) watchDomLoaded( true );
 			_view.loadURL( url );
 		}
 
@@ -351,14 +323,12 @@ package es.xperiments.media
 		 * Enhaced loadString
 		 * Loads a string and inject the javascript comunication code into it. 
 		 * @param text String to load
-		 * @para
 		 */
-		public function loadString( text : String, mimeType : String = "text/html", checkDomLoaded:Boolean = false ) : void
+		public function loadString( text : String, mimeType : String = "text/html" ) : void
 		{
-			if( mimeType == "text/html")
+			if ( mimeType == "text/html")
 			{
 				text = text.replace( new RegExp( '<head>', 'g' ), '<head><script type="text/javascript">' + StageWebViewDisk.JSCODE + '</script>' );
-				if( checkDomLoaded ) watchDomLoaded( true );
 			}
 			_view.loadString( text, mimeType );
 		}
@@ -368,9 +338,8 @@ package es.xperiments.media
 		 * This way we can access local files with the appfile:/ protocol
 		 * @params String content
 		 */
-		public function loadLocalString( content : String, checkDomLoaded:Boolean = false  ) : void
+		public function loadLocalString( content : String ) : void
 		{
-			if( checkDomLoaded ) watchDomLoaded( true );
 			_view.loadURL( new File( StageWebViewDisk.createTempFile( content ).nativePath ).url );
 		}
 
@@ -436,7 +405,7 @@ package es.xperiments.media
 		 */
 		public function getSnapShot() : void
 		{
-			super.bitmapData = new BitmapData( _viewPort.width, _viewPort.height, false, 0xFF0000 );
+			super.bitmapData = new BitmapData( _viewPort.width, _viewPort.height, false, 0x000000 );
 			_view.drawViewPortToBitmapData( super.bitmapData );
 
 			var bridge : StageWebViewBridge = this;
