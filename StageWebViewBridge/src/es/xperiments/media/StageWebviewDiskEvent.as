@@ -23,7 +23,18 @@ package es.xperiments.media
 	public class StageWebviewDiskEvent extends Event
 	{
 		
+		/**
+		 * Dispatched when disk parsing start
+		 * 
+		 * @eventType START_DISK_PARSING 
+		 */
 		public static const START_DISK_PARSING : String = "START_DISK_PARSING";
+
+		/**
+		 * Dispatched when disk parsing ends
+		 * 
+		 * @eventType END_DISK_PARSING 
+		 */		
 		public static const END_DISK_PARSING : String = "END_DISK_PARSING";
 
 		public function StageWebviewDiskEvent( type : String, bubbles : Boolean = false, cancelable : Boolean = false )

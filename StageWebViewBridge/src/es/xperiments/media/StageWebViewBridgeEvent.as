@@ -22,9 +22,25 @@ package es.xperiments.media
 	 */
 	public class StageWebViewBridgeEvent extends Event
 	{
-		
+		/**
+		 * Dispatched when the snapshot of the StageWebView is done
+		 * 
+		 * @eventType ON_GET_SNAPSHOT 
+		 */		
 		public static const ON_GET_SNAPSHOT : String = "ON_GET_SNAPSHOT";
+		
+		/**
+		 * Dispatched when Html DOMContentLoaded gets fired
+		 * 
+		 * @eventType DOM_LOADED 
+		 */		
 		public static const DOM_LOADED : String = "DOM_LOADED";
+		
+		/**
+		 * Dispatched when bidirectional connection is stablished and working
+		 * 
+		 * @eventType DEVICE_READY 
+		 */		
 		public static const DEVICE_READY : String = "DEVICE_READY";
 		public var domLoadedData:Object = null;
 		public function StageWebViewBridgeEvent( type : String, data:Object = null, bubbles : Boolean = false, cancelable : Boolean = false )

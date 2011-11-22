@@ -1,4 +1,4 @@
-/*
+	/*
 Copyright 2011 Pedro Casaubon
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,7 +16,6 @@ limitations under the License.
 package es.xperiments.media
 {
 	import flash.desktop.NativeApplication;
-	import flash.system.ApplicationDomain;
 	import flash.utils.ByteArray;
 	import flash.display.Stage;
 	import flash.events.Event;
@@ -134,7 +133,10 @@ package es.xperiments.media
 					forceBuildUpdate = true;
 				}
 			}
-
+			
+			// delete our temp directory at start
+			deleteTempFolder();
+			
 			// If first run or in DebugMode or we have update the build number then run the "diskCaching"
 			if ( _firstRun || (_debugMode && isDESKTOP ) || forceBuildUpdate )
 			{
@@ -146,8 +148,7 @@ package es.xperiments.media
 				dispatchEvent( new StageWebviewDiskEvent( StageWebviewDiskEvent.END_DISK_PARSING ) );
 			}
 
-			// delete our temp directory at start
-			deleteTempFolder();
+
 		}
 
 		/**

@@ -23,11 +23,11 @@ package es.xperiments.media
 	import es.xperiments.utils.Base64;
 
 	import flash.events.EventDispatcher;
-  
+
 	public class StageWebViewBridgeExternal extends EventDispatcher
 	{
 		private var _view:StageWebViewBridge;
-		private var _serializeObject:Object;
+		private var _serializeObject:Object; 
 		private var _callBacks:Array;
 		private var _callBackFunction:Function;
 		
@@ -35,7 +35,7 @@ package es.xperiments.media
 		 * Contructor
 		 * @param stageWebView The stagewebview instance 
 		 */
-		public function StageWebViewBridgeExternal( stageWebView:StageWebViewBridge )
+		public function StageWebViewBridgeExternal( stageWebView : StageWebViewBridge )
 		{
 			_view = stageWebView;
 			_callBacks = new Array();
@@ -79,6 +79,7 @@ package es.xperiments.media
 		internal function parseCallBack( base64String:String ):void
 		{
 			_serializeObject = JSON.parse( Base64.decode( base64String ).toString() );
+			trace( '_serializeObject =>'+_serializeObject['method']);
 			_callBackFunction = _callBacks[ _serializeObject['method'] ];
 			var returnValue:* = null;
 

@@ -44,8 +44,15 @@
 		/* Used to determine if the paths has been initialized */
 		var pathsReady = false;
 		
-		/* Used to determine last call to AS3 time */
-		var lastCallTimer = 0;
+		/* Used to determine last time call to AS3 was made */
+		var lastCallTime = new Date().getTime();
+		
+		/* Used to determine the delay between calls to AS3 */
+		var aggregatedCallDelay = 0;
+		
+		/* Used to determine the minimun consecutive delay between calls to AS3 */
+		/* AT YOUR RISK!!!!! Use StageWebViewBridge.setCallDelay( ms ), to change the default value. */
+		var defaultCallDelay = 500;
 		
 		/* Used to determine the "protocol" to do the comm with AS3 */
 		var sendingProtocol = checker.iphone ? 'about:':'tuoba:';		
@@ -98,6 +105,9 @@
 		/* Usage: StageWebViewBridge.call( 'as3FunctionToCall', jsCallBack, ...restParams ) */
 		var call = function( )
 		{
+			
+			aggregatedCallDelay = ( new Date().getTime()  - lastCallTime < defaultCallDelay ) ? aggregatedCallDelay+defaultCallDelay:0;
+			
 			var argumentsArray = [];
 			var _serializeObject = {};
 				_serializeObject.method = arguments[ 0 ];
@@ -113,8 +123,18 @@
 
 			_serializeObject.arguments = argumentsArray;
 			if( _serializeObject.callBack !=undefined ) { addCallback('[SWVMethod]'+arguments[ 0 ], arguments[ 1 ] ); };
-			window.location.href=sendingProtocol+'[SWVData]'+btoa( JSON.stringify( _serializeObject ) );
+			setTimeout( function(){ window.location.href=sendingProtocol+'[SWVData]'+btoa( JSON.stringify( _serializeObject ) );},aggregatedCallDelay );			
+			
+			lastCallTime = new Date().getTime();
+			
 		};
+
+		/* Used to change the defaultCallDelay value. */
+		var setCallDelay = function( ms )
+		{
+			defaultCallDelay = ms;
+		};
+		
 		
 		/* Used internally to store callback functions for call methods */
 		var addCallback = function( name, fn )
@@ -210,17 +230,14 @@
 		var callDOMContentLoaded = function()
 		{          
 			document.removeEventListener( 'DOMContentLoaded', callDOMContentLoaded, false );
-			lastCallTimer = new Date().getTime()+500;
-			setTimeout( function(){ call( '___onDomReady', null,  DOMContentLoadedCallBack() ); onReady(); }, 500); 			
+			call( '___onDomReady', onReady,  DOMContentLoadedCallBack() );
 		};
 		
 		/* Fired on page load complete */
 		var loadComplete = function()
 		{
 			document.removeEventListener('load', loadComplete, false );
-			var lastCallTime = new Date().getTime()-lastCallTimer;
-			var delay = lastCallTime < 500 ? 500:1;
-			setTimeout( function(){ call('___getFilePaths', onGetFilePaths );}, delay);
+			call('___getFilePaths', onGetFilePaths );		
 		};
 		
 		/* Listen for page load complete */
@@ -236,7 +253,8 @@
 			getFilePath:getFilePath,
 			ready:ready,
 			deviceReady:deviceReady,
-			domLoaded:domLoaded
+			domLoaded:domLoaded,
+			setCallDelay:setCallDelay
 		};
 	})();
 })(window);

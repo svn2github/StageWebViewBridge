@@ -29,6 +29,33 @@ package es.xperiments.media
 	import flash.media.StageWebView;
 	import flash.system.System;
 
+	/** 
+	 * @eventType es.xperiments.media.StageWebviewDiskEvent.START_DISK_PARSING 
+	 */
+	[Event(name="START_DISK_PARSING", type="es.xperiments.media.StageWebviewDiskEvent")]
+	/** 
+	 * @eventType es.xperiments.media.StageWebviewDiskEvent.END_DISK_PARSING 
+	 */
+	[Event(name="END_DISK_PARSING", type="es.xperiments.media.StageWebviewDiskEvent")]
+	/** 
+	 * @eventType es.xperiments.media.StageWebViewBridgeEvent.DEVICE_READY 
+	 */
+	[Event(name="DEVICE_READY", type="es.xperiments.media.StageWebViewBridgeEvent")]
+	/** 
+	 * @eventType es.xperiments.media.StageWebViewBridgeEvent.DOM_LOADED 
+	 */
+	[Event(name="DOM_LOADED", type="es.xperiments.media.StageWebViewBridgeEvent")]
+	/** 
+	 * @eventType es.xperiments.media.StageWebViewBridgeEvent.ON_GET_SNAPSHOT 
+	 */
+	[Event(name="ON_GET_SNAPSHOT", type="es.xperiments.media.StageWebViewBridgeEvent")]
+	/**
+	 * 	Signals that the last load operation requested by loadString() , loadLocalString(), loadURL() , loadLocalURL() method has completed. 
+	 * @eventType flash.events.Event.COMPLETE 
+	 */
+	[Event(name="complete", type="flash.events.Event")]
+	
+	
 	public class StageWebViewBridge extends Bitmap
 	{
 		private static const _zeroPoint : Point = new Point( 0, 0 );
@@ -47,8 +74,48 @@ package es.xperiments.media
 		 * @param w Indicates the initial width
 		 * @param h Indicates the initial height
 		 * @param autoVisibleUpdate Boolean. Control visibility testing of his parents. TRUE by Default. Disable it to save some CPU ( as it uses an EXIT_FRAME event listener to work ),then control yourself his visibility. 
-		 * @example
-		 *  var testBridge:StageWebViewBridge = new StageWebViewBridge( );
+		 * @example The following code creates a new StageWebViewInstance
+		 * <listing version="3.0">
+		 *	import es.xperiments.media.StageWebViewDisk;
+		 *	import es.xperiments.media.StageWebviewDiskEvent;
+		 *	import es.xperiments.media.StageWebViewBridge;
+		 *	import es.xperiments.media.StageWebViewBridgeEvent;
+		 *	import flash.events.Event;
+		 *	import flash.events.MouseEvent;
+		 *	
+		 *	// this is our main view
+		 *	var view:StageWebViewBridge;
+		 *	
+		 *	
+		 *	// init the disk filesystem
+		 *	StageWebViewDisk.addEventListener( StageWebviewDiskEvent.END_DISK_PARSING, onInit );
+		 *	StageWebViewDisk.setDebugMode( true );
+		 *	StageWebViewDisk.initialize( stage );
+		 *	
+		 *	// Fired when StageWebviewDiskEvent cache process finish 
+		 *	function onInit( e:StageWebviewDiskEvent ):void
+		 *	{
+		 *		trace( 'END_DISK_PARSING');	
+		 *		
+		 *		// create the view
+		 *		view = new StageWebViewBridge( 0,0, 320,240 );
+		 *		
+		 *		// listen StageWebViewBridgeEvent.DEVICE_READY event to be sure the communication is ok
+		 *		view.addEventListener(StageWebViewBridgeEvent.DEVICE_READY, onDeviceReady );
+		 *	
+		 *		
+		 *		// load the localfile demo.html ( inside the www dir )
+		 *		view.loadURL('http://www.google.com');
+		 *	
+		 *	}
+		 *	
+		 *	function onDeviceReady( e:Event ):void
+		 *	{
+		 *		output.appendText('onDeviceReady\n');
+		 *		// all is loaded and ok, show the view
+		 *		addChild( view );
+		 *	}
+		 * </listing>  
 		 * 
 		 */
 		public function StageWebViewBridge( xpos : uint = 0, ypos : uint = 0, w : uint = 400, h : uint = 400, autoVisibleUpdate : Boolean = true )
@@ -225,37 +292,58 @@ package es.xperiments.media
 		}
 
 		/* PROXING SOME PROPIERTIES */
+		/**
+		 * proxy from flash.media.StageWebView
+		 */
 		public function set viewPort( rectangle : Rectangle ) : void
 		{
 			_view.viewPort = rectangle;
 		}
 
+		/**
+		 * proxy from flash.media.StageWebView
+		 */
 		public function get viewPort() : Rectangle
 		{
 			return _view.viewPort;
 		}
 
+		/**
+		 * proxy from flash.media.StageWebView
+		 */
 		public function get isHistoryBackEnabled() : Boolean
 		{
 			return _view.isHistoryBackEnabled;
 		}
 
+		/**
+		 * proxy from flash.media.StageWebView
+		 */
 		public function get isHistoryForwardEnabled() : Boolean
 		{
 			return _view.isHistoryForwardEnabled;
 		}
 
+		/**
+		 * proxy from flash.media.StageWebView
+		 */
 		public function get location() : String
 		{
 			return _view.location;
 		}
 
+		/**
+		 * proxy from flash.media.StageWebView
+		 */
 		public function get title() : String
 		{
 			return _view.title;
 		}
 
 		/* PROXING SOME METHODS */
+		/**
+		 * proxy from flash.media.StageWebView
+		 */
 		public function assignFocus( direction : String = "none" ) : void
 		{
 			_view.assignFocus( direction );
@@ -263,7 +351,7 @@ package es.xperiments.media
 
 		/**
 		 * Frees memory that is used to store the StageWebViewBridge object. 
-		 * All subsequent calls to methods or properties of this StageWebViewBridge instance fail, and an exception is thrown.  
+		 * All subsequent calls to methods or properties of this StageWebViewBridge instance fail, and an exception is thrown.
 		 */
 		public function dispose() : void
 		{
@@ -282,11 +370,17 @@ package es.xperiments.media
 			System.gc();
 		}
 
+		/**
+		 * proxy from flash.media.StageWebView
+		 */
 		public function historyBack() : void
 		{
 			_view.historyBack();
 		}
 
+		/**
+		 * proxy from flash.media.StageWebView
+		 */
 		public function historyForward() : void
 		{
 			_view.historyForward();
@@ -299,7 +393,7 @@ package es.xperiments.media
 		 * <a href="applink:/index.html">index</a>
 		 * 
 		 * For images,css,scripts... etc, use the "appfile:/" protocol:
-		 * <img src="appfile:/image.png">
+		 * <img src="appfile:/image.png"/>
 		 * 
 		 * @param url	The url file with applink:/ protocol
 		 * @param initJavascript Enables / Disables Javascript init at page load complete.				
@@ -343,11 +437,17 @@ package es.xperiments.media
 			_view.loadURL( new File( StageWebViewDisk.createTempFile( content ).nativePath ).url );
 		}
 
+		/**
+		 * proxy from flash.media.StageWebView
+		 */
 		public function reload() : void
 		{
 			_view.reload();
 		}
 
+		/**
+		 * proxy from flash.media.StageWebView
+		 */
 		public function stop() : void
 		{
 			_view.stop();
@@ -365,11 +465,17 @@ package es.xperiments.media
 			viewPort = _viewPort;
 		}
 
+		/**
+		 * @inheritDoc
+		 */
 		override public function get x() : Number
 		{
 			return super.x;
 		}
 
+		/**
+		 * @inheritDoc
+		 */
 		override public function set x( ax : Number ) : void
 		{
 			super.x = ax;
@@ -377,11 +483,17 @@ package es.xperiments.media
 			viewPort = _viewPort;
 		}
 
+		/**
+		 * @inheritDoc
+		 */
 		override public function get y() : Number
 		{
 			return super.y;
 		}
 
+		/**
+		 * @inheritDoc
+		 */
 		override public function set y( ay : Number ) : void
 		{
 			super.y = ay;
@@ -389,11 +501,17 @@ package es.xperiments.media
 			viewPort = _viewPort;
 		}
 
+		/**
+		 * @inheritDoc
+		 */
 		override public function get visible() : Boolean
 		{
 			return super.visible;
 		}
 
+		/**
+		 * @inheritDoc
+		 */
 		override public function set visible( value : Boolean ) : void
 		{
 			super.visible = value;
