@@ -205,8 +205,8 @@
 			sourcePath = data.sourcePath;
 			rootPath = data.rootPath;
 			docsPath = data.docsPath;
-			cached_extensions =  data.extensions ;
-			fileRegex =new RegExp(( "\(jsfile:\/\)\(\[\\w\-\\\.\\\/%\]\+\("+cached_extensions.join('\|')+"\)\)" ),"gixsm");
+			cached_extensions =  data.extensions;
+			fileRegex =new RegExp(( "\(jsfile:\/\)\(\[\\w\-\\\.\\\/%\]\+\("+cached_extensions.join('\|')+"\)\)" ),"gim");
 			pathsReady = true;
 			devicereadyCallBack();
 			setTimeout( function(){ call('___onDeviceReady'); }, 1);
