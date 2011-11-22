@@ -210,8 +210,6 @@
 			pathsReady = true;
 			devicereadyCallBack();
 			setTimeout( function(){ call('___onDeviceReady'); }, 1);
-			
-			
 		};
 		
 		/* Assign a callback function that executes the on deviceready */
