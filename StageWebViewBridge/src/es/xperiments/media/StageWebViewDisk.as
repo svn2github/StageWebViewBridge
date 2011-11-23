@@ -102,12 +102,12 @@ package es.xperiments.media
 					_applicationRootPath = _applicationCacheDirectory + '/' + getWorkingDir();
 					_applicationSourcesDirectory = new File( new File( "app:/" + _document_root ).nativePath ).url;
 					break;
-				// DESKTOP OSX
+				// DESKTOP
 				case isDESKTOP:
-					_appCacheFile = new File( new File( "app:/" ).nativePath );
+					_appCacheFile = _debugMode ? new File( new File( "app:/" ).nativePath ) : File.applicationStorageDirectory;
 					_applicationCacheDirectory = _appCacheFile.url;
 					_applicationRootPath = _applicationCacheDirectory + '/' + getWorkingDir();
-					_applicationSourcesDirectory = _applicationRootPath;
+					_applicationSourcesDirectory =  _debugMode ? _applicationRootPath:new File( new File( "app:/" + _document_root ).nativePath ).url;				
 					break;
 			}
 
@@ -455,8 +455,8 @@ package es.xperiments.media
 		 */
 		private static function parseAppFile( str : String ) : String
 		{
-			// Search for files that ARE in the cached_extensions list
-			// Repaces the path with a path with file:// protocol
+			// Search for files that are in the cached_extensions list
+			// Replaces the path with a path with file:// protocol
 			var result : Object = _appFileIncludeRegexp.exec( str );
 			while ( result != null )
 			{
@@ -465,7 +465,7 @@ package es.xperiments.media
 			}
 
 			// Search for files that AREN'T in the cached_extensions list
-			// Repaces the path with a path with file:// protocol
+			// Replaces the path with a path with file:// protocol
 
 			if ( isDESKTOP && _debugMode )
 			{
