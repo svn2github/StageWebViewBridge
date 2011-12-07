@@ -61,6 +61,7 @@ package es.xperiments.media
 		// Embed the javascript file used in injection
 		[Embed(source='StageWebViewBridge.js', mimeType="application/octet-stream")]
 		private static const EMBEDJS : Class;
+		private static var _appDocsDirectory : String;
 
 		/**
 		 * Main init function
@@ -94,6 +95,7 @@ package es.xperiments.media
 					_applicationCacheDirectory = new File( _appCacheFile.nativePath ).url;
 					_applicationRootPath = _applicationCacheDirectory + '/' + getWorkingDir();
 					_applicationSourcesDirectory = _applicationRootPath;
+					_appDocsDirectory = File.documentsDirectory.url;					
 					break;
 				// IOS
 				case isIPHONE :
@@ -101,13 +103,15 @@ package es.xperiments.media
 					_applicationCacheDirectory = new File( _appCacheFile.nativePath ).url;
 					_applicationRootPath = _applicationCacheDirectory + '/' + getWorkingDir();
 					_applicationSourcesDirectory = new File( new File( "app:/" + _document_root ).nativePath ).url;
+					_appDocsDirectory = File.documentsDirectory.url;					
 					break;
 				// DESKTOP
 				case isDESKTOP:
 					_appCacheFile = _debugMode ? new File( new File( "app:/" ).nativePath ) : File.applicationStorageDirectory;
 					_applicationCacheDirectory = _appCacheFile.url;
 					_applicationRootPath = _applicationCacheDirectory + '/' + getWorkingDir();
-					_applicationSourcesDirectory =  _debugMode ? _applicationRootPath:new File( new File( "app:/" + _document_root ).nativePath ).url;				
+					_applicationSourcesDirectory =  _debugMode ? _applicationRootPath:new File( new File( "app:/" + _document_root ).nativePath ).url;
+					_appDocsDirectory = File.documentsDirectory.url;									
 					break;
 			}
 
@@ -193,7 +197,7 @@ package es.xperiments.media
 		 * @param contents Contents of the file.
 		 * @param extension Extension of the file ( default = "html" ).
 		 */
-		internal static function createTempFile( contents : String, extension : String = "html" ) : File
+		internal static function createTempFile( contents : String, includeBridge:Boolean = true, extension : String = "html" ) : File
 		{
 			contents = parseAppFile( contents );
 			contents = contents.replace( _headRegexp, '<head><script type="text/javascript">' + JSCODE + '</script>' );
@@ -470,10 +474,12 @@ package es.xperiments.media
 			if ( isDESKTOP && _debugMode )
 			{
 				str = str.split( 'appfile:' ).join( _appCacheFile.resolvePath( _document_root ).url );
+				str = str.split( 'docfile:' ).join( _appDocsDirectory );
 			}
 			else
 			{
 				str = str.split( 'appfile:' ).join( _applicationSourcesDirectory );
+				str = str.split( 'docfile:' ).join( _appDocsDirectory );
 			}
 			return str;
 		}

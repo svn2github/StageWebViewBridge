@@ -57,7 +57,7 @@ package es.xperiments.media
 	
 	
 	public class StageWebViewBridge extends Bitmap
-	{
+	{ 
 		private static const _zeroPoint : Point = new Point( 0, 0 );
 		private var _translatedPoint : Point;
 		private var _bridge : StageWebViewBridgeExternal;
