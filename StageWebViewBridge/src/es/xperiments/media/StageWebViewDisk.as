@@ -15,6 +15,8 @@ limitations under the License.
  */
 package es.xperiments.media
 {
+	import flash.ui.Keyboard;
+	import flash.events.KeyboardEvent;
 	import flash.desktop.NativeApplication;
 	import flash.utils.ByteArray;
 	import flash.display.Stage;
@@ -56,6 +58,7 @@ package es.xperiments.media
 		private static var _appFileIncludeRegexp : RegExp;
 		private static var _stage : Stage;
 		private static var _applicationSourcesDirectory : String;
+		private static var _applicationTempDir:File;
 		private static const _headRegexp : RegExp = new RegExp( '<head>', 'g' );
 
 		// Embed the javascript file used in injection
@@ -95,15 +98,36 @@ package es.xperiments.media
 					_applicationCacheDirectory = new File( _appCacheFile.nativePath ).url;
 					_applicationRootPath = _applicationCacheDirectory + '/' + getWorkingDir();
 					_applicationSourcesDirectory = _applicationRootPath;
-					_appDocsDirectory = File.documentsDirectory.url;					
+					_appDocsDirectory = File.documentsDirectory.url;
+					_applicationTempDir = _appCacheFile.resolvePath( 'SWVBTmp' );
+					
+					NativeApplication.nativeApplication.addEventListener(Event.DEACTIVATE, deleteTempFolder, false, 0, true);
+					NativeApplication.nativeApplication.addEventListener(KeyboardEvent.KEY_DOWN, onAndroidBackButton, false, 0, true);
+											
 					break;
 				// IOS
 				case isIPHONE :
-					_appCacheFile = File.applicationStorageDirectory;
+					/* new iOS 5.0 Data Storage Guidelines
+					 * https://developer.apple.com/icloud/documentation/data-storage/
+					 * https://developer.apple.com/library/ios/#qa/qa1719/_index.html
+					 */
+					_appCacheFile = new File(File.applicationDirectory.nativePath +"/\.\./Library/Caches");
+
 					_applicationCacheDirectory = new File( _appCacheFile.nativePath ).url;
 					_applicationRootPath = _applicationCacheDirectory + '/' + getWorkingDir();
 					_applicationSourcesDirectory = new File( new File( "app:/" + _document_root ).nativePath ).url;
-					_appDocsDirectory = File.documentsDirectory.url;					
+					_appDocsDirectory = File.documentsDirectory.url;
+					
+					/* new iOS 5.0 Data Storage Guidelines
+					 * https://developer.apple.com/icloud/documentation/data-storage/
+					 * https://developer.apple.com/library/ios/#qa/qa1719/_index.html
+					 */					
+					_applicationTempDir = new File(File.applicationDirectory.nativePath +"/\.\./tmp");
+					
+					// To acomplish the Apple  Data Storage Guidelines Rules delete our TMP files dir at exit
+					NativeApplication.nativeApplication.addEventListener(Event.EXITING, deleteTempFolder,false,0,true );
+					NativeApplication.nativeApplication.addEventListener(Event.DEACTIVATE, deleteTempFolder, false, 0, true);					
+					
 					break;
 				// DESKTOP
 				case isDESKTOP:
@@ -111,7 +135,10 @@ package es.xperiments.media
 					_applicationCacheDirectory = _appCacheFile.url;
 					_applicationRootPath = _applicationCacheDirectory + '/' + getWorkingDir();
 					_applicationSourcesDirectory =  _debugMode ? _applicationRootPath:new File( new File( "app:/" + _document_root ).nativePath ).url;
-					_appDocsDirectory = File.documentsDirectory.url;									
+					_appDocsDirectory = File.documentsDirectory.url;
+					_applicationTempDir = _appCacheFile.resolvePath( 'SWVBTmp' );
+					NativeApplication.nativeApplication.addEventListener(Event.EXITING, deleteTempFolder,false,0,true );
+					NativeApplication.nativeApplication.addEventListener(Event.DEACTIVATE, deleteTempFolder, false, 0, true);														
 					break;
 			}
 
@@ -154,6 +181,15 @@ package es.xperiments.media
 
 
 		}
+
+		/**
+		 * Handle Android back button
+		 */
+		private static function onAndroidBackButton( event:KeyboardEvent ) : void
+		{
+			if(event.keyCode == Keyboard.BACK) deleteTempFolder();
+		}
+
 
 		/**
 		 * Get the JS code from the Embed JS file, and remove carriage returns
@@ -202,7 +238,7 @@ package es.xperiments.media
 			contents = parseAppFile( contents );
 			contents = contents.replace( _headRegexp, '<head><script type="text/javascript">' + JSCODE + '</script>' );
 			_fileStream = new FileStream();
-			_tmpFile = _appCacheFile.resolvePath( 'SWVBTmp/' + ( _tempFileCounter++) + '.' + extension );
+			_tmpFile = _applicationTempDir.resolvePath( ( _tempFileCounter++) + '.' + extension );
 			_fileStream.open( _tmpFile, FileMode.WRITE );
 			_fileStream.writeUTFBytes( contents );
 			_fileStream.close();
@@ -323,12 +359,11 @@ package es.xperiments.media
 		/**
 		 * Deletetes the Temp Directory
 		 */
-		private static function deleteTempFolder() : void
+		private static function deleteTempFolder( e:Event = null ) : void
 		{
-			var tmpFile : File = _appCacheFile.resolvePath( 'SWVBTmp' );
-			if ( tmpFile.exists )
+			if ( _applicationTempDir.exists )
 			{
-				tmpFile.deleteDirectory( true );
+				_applicationTempDir.deleteDirectory( true );
 			}
 		}
 

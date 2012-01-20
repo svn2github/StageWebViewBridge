@@ -66,14 +66,15 @@ package es.xperiments.media
 		private var _tmpFile : File = new File();
 		private var _snapShotVisible : Boolean = false;
 		private var _getSnapShotCallBack : Function;
-		private var _autoVisibleUpdate : Boolean;
+		private var _autoUpdateProps : Boolean;
+		private var _visible : Boolean = true;
 
 		/**
 		 * @param xpos Indicates the initial x pos
 		 * @param ypos Indicates the initial y pos
 		 * @param w Indicates the initial width
 		 * @param h Indicates the initial height
-		 * @param autoVisibleUpdate Boolean. Control visibility testing of his parents. TRUE by Default. Disable it to save some CPU ( as it uses an EXIT_FRAME event listener to work ),then control yourself his visibility. 
+		 * @param _autoUpdateProps Boolean. Control visibility and position of his parents. TRUE by Default. Disable it to save some CPU ( as it uses an EXIT_FRAME event listener to work ),then control yourself his props. 
 		 * @example The following code creates a new StageWebViewInstance
 		 * <listing version="3.0">
 		 *	import es.xperiments.media.StageWebViewDisk;
@@ -118,10 +119,10 @@ package es.xperiments.media
 		 * </listing>  
 		 * 
 		 */
-		public function StageWebViewBridge( xpos : uint = 0, ypos : uint = 0, w : uint = 400, h : uint = 400, autoVisibleUpdate : Boolean = true )
+		public function StageWebViewBridge( xpos : uint = 0, ypos : uint = 0, w : uint = 400, h : uint = 400, autoUpdateProps : Boolean = true )
 		{
 			super();
-			_autoVisibleUpdate = autoVisibleUpdate;
+			_autoUpdateProps = autoUpdateProps;
 			_viewPort = new Rectangle( 0, 0, w, h );
 			_view = new StageWebView();
 			_view.viewPort = _viewPort;
@@ -186,13 +187,9 @@ package es.xperiments.media
 		 */
 		private function onAdded( event : Event ) : void
 		{
-			if ( visible ) _view.stage = stage;
-			_translatedPoint = localToGlobal( _zeroPoint );
-			_viewPort.x = _translatedPoint.x;
-			_viewPort.y = _translatedPoint.y;
-			viewPort = _viewPort;
-
-			if ( _autoVisibleUpdate )
+			if ( visible ) _view.stage = StageWebViewDisk.stage;
+			updatePosition();
+			if ( _autoUpdateProps )
 			{
 				addEventListener( Event.EXIT_FRAME, checkVisibleState );
 				addEventListener( Event.REMOVED_FROM_STAGE, onRemoved );
@@ -216,7 +213,33 @@ package es.xperiments.media
 		 */
 		private function checkVisibleState( event : Event ) : void
 		{
-			visible = visible && isVisible( this );
+			if( isParentVisible( this ) )
+			{
+				if( _visible )
+				{
+					if( _snapShotVisible )
+					{
+						super.visible = true;
+						_view.stage = null;
+					}
+					else
+					{
+						super.visible = false;
+						_view.stage = StageWebViewDisk.stage;
+					}
+				}
+				else
+				{
+					super.visible = false;
+					_view.stage = null;
+				}
+			}
+			else
+			{
+				_view.stage = null;
+			}
+	
+			updatePosition();	
 		}
 
 		/**
@@ -506,17 +529,49 @@ package es.xperiments.media
 		 */
 		override public function get visible() : Boolean
 		{
-			return super.visible;
+
+			return _visible;
 		}
 
 		/**
 		 * @inheritDoc
 		 */
-		override public function set visible( value : Boolean ) : void
+		override public function set visible( mode : Boolean ) : void
 		{
-			super.visible = value;
-			_view.stage = value ? ( _snapShotVisible ? null : StageWebViewDisk.stage ) : null;
+			_visible = mode;
+			if( _visible )
+			{
+				if( _snapShotVisible )
+				{
+					super.visible = true;
+					_view.stage = null;
+				}
+				else
+				{
+					super.visible = false;
+					_view.stage =  StageWebViewDisk.stage;
+				}
+				
+			}
+			else
+			{
+				super.visible = false;
+				_view.stage = null;
+			}
+
 		}
+
+		/**
+		 * Updates position acording to its parent
+		 */
+		private function updatePosition() : void
+		{
+			_translatedPoint = localToGlobal( _zeroPoint );
+			_viewPort.x = _translatedPoint.x;
+			_viewPort.y = _translatedPoint.y;
+			viewPort = _viewPort;
+		}
+
 
 		/**
 		 * draws a snapshot of StageWebView to the Bitmap
@@ -540,9 +595,20 @@ package es.xperiments.media
 		 */
 		public function set snapShotVisible( mode : Boolean ) : void
 		{
+			
 			_snapShotVisible = mode;
-			_view.stage = mode ? null : ( visible ? null : stage );
-			super.visible = mode;
+			visible = _visible;
+		}
+
+		/**
+		 * Enables / Disables the visibility of the SnapShotBitmap
+		 * @param mode	Boolean.
+		 */
+		public function get snapShotVisible( ) : Boolean
+		{
+			
+			return _snapShotVisible;
+			
 		}
 
 		/**
@@ -570,10 +636,9 @@ package es.xperiments.media
 		 * Recursively getting parents visivility
 		 * @param t the displayobject to test
 		 */
-		private static function isVisible( t : DisplayObject ) : Boolean
+		private static function isParentVisible( t : DisplayObject ) : Boolean
 		{
-			if (t.stage == null)
-				return false;
+			if (t.stage == null) return false;
 			var p : DisplayObjectContainer = t.parent;
 			while (!(p is Stage))
 			{
