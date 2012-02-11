@@ -239,7 +239,7 @@ package es.xperiments.media
 				_view.stage = null;
 			}
 	
-			updatePosition();	
+			//updatePosition();	
 		}
 
 		/**
