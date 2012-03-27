@@ -1,0 +1,132 @@
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+	<title>untitled</title>
+	<meta name="generator" content="TextMate http://macromates.com/">
+	<meta name="author" content="Pedro Casaubon"> 
+	
+</head>
+<body>
+<script type="text/javascript">
+			if (!Function.prototype.bind) {
+			  Function.prototype.bind = function (oThis) {
+			    if (typeof this !== "function") {
+			      // closest thing possible to the ECMAScript 5 internal IsCallable function
+			      throw new TypeError("Function.prototype.bind - what is trying to be bound is not callable");
+			    }
+
+			    var aArgs = Array.prototype.slice.call(arguments, 1), 
+			        fToBind = this, 
+			        fNOP = function () {},
+			        fBound = function () {
+			          return fToBind.apply(this instanceof fNOP
+			                                 ? this
+			                                 : oThis || window,
+			                               aArgs.concat(Array.prototype.slice.call(arguments)));
+			        };
+
+			    fNOP.prototype = this.prototype;
+			    fBound.prototype = new fNOP();
+
+			    return fBound;
+			  };
+			}
+
+
+	var db;
+	var messageSource;
+	var messageOrigin;
+	var hddID;
+
+	function displayMessage( msg )
+	{
+
+		var message = JSON.parse( msg.data );
+		switch( message.action )
+		{
+			case 'init':
+				//createBDD( message.hddID );
+				messageSource = msg.source;
+				messageOrigin = msg.origin;
+				hddID = message.hdd;
+				createBDD( );
+			break;
+			case 'DBSaveFile':
+				DBSaveFile( message.file, message.data );
+			break;
+		}
+	}
+	function DBSaveFile( file, data )
+	{
+		if( !DBSaveFile.remoteMode )
+		{
+			db.transaction( function( transaction )
+				{ 
+					transaction.executeSql('INSERT INTO FSData ( content ) VALUES ( ? );',[ data ], ok.bind(file),ko );
+				}, function( err )
+				{
+					if( err.code == 4 )
+					{
+						DBSaveFile.remoteMode = true;
+						DBSaveFile( file, data );
+					}
+			}/*, function(){alert('ooook')}*/);
+		}
+		else
+		{
+			sendMessage({ action:'onDBSaveFileDiskError', file:file, error:'DISKSPACE', data:data });
+		}
+	}
+	DBSaveFile.remoteMode = false;
+	function ko( tx,err ){ /*alert( 'aaaa'+err.code ) */}
+	function ok( transaction, resultSet )
+	{
+		this.hdd = hddID;
+		this.id = resultSet.insertId;
+		sendMessage( { action:'onDBSaveFile', file:this } );
+	}
+
+
+	function sendMessage( msg )
+	{
+		messageSource.postMessage( JSON.stringify( msg ), messageOrigin );
+	}
+
+	function createBDD( )
+	{
+		try
+		{
+			db = window.openDatabase( 'FS_'+hddID,'1.0','FS',50*1024*1024);
+			setTimeout( createDBTable,0 );
+		}
+		catch( e )
+		{
+			createBDD();
+		}
+	}
+	function createDBTable()
+	{
+		db.transaction(function( transaction )
+		{
+		    transaction.executeSql
+		    (
+		    	'CREATE TABLE IF NOT EXISTS FSData (id INTEGER NOT NULL PRIMARY KEY, content TEXT NOT NULL);',
+		    	[],
+		    	function()
+		    	{
+
+		    		sendMessage({ action:'hddInit', status:true, hdd:hddID });
+		    	},
+		    	function()
+		    	{
+		    		sendMessage({ action:'hddInit', status:false, hdd:hddID });
+		    	}
+		    );
+		});				
+	}
+	window.addEventListener("message", displayMessage, false);	
+</script>
+aaaaa
+
+</body>
+</html>
