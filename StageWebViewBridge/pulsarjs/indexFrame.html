@@ -74,7 +74,7 @@
 		}
 		else
 		{
-			sendMessage({ action:'onDBSaveFileDiskError', file:file, error:'DISKSPACE', data:data });
+						sendMessage({ action:'onDBSaveFileDiskError', file:file, error:'DISKSPACE', data:data });
 		}
 	}
 	DBSaveFile.remoteMode = false;
@@ -125,8 +125,9 @@
 		});				
 	}
 	window.addEventListener("message", displayMessage, false);	
+	alert(2);
 </script>
-aaaaa
+aaaaaBBBBBBB
 
 </body>
 </html>
